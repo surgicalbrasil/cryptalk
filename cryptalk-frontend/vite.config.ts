@@ -8,4 +8,13 @@ export default defineConfig({
     'process.env': {},
     global: 'globalThis',
   },
+  build: {
+    rollupOptions: {
+      onwarn(warning, warn) {
+        // Ignora avisos de TypeScript
+        if (warning.code === 'UNUSED_EXTERNAL_IMPORT') return;
+        warn(warning);
+      }
+    }
+  }
 })
