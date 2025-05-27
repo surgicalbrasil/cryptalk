@@ -1,0 +1,50 @@
+#!/bin/bash
+
+echo "==================================="
+echo "CrypTalk Web3Storage Setup"
+echo "==================================="
+echo ""
+echo "Sua DID: did:key:z6MkpTMTCcMMKgRFPAvoAtgf9Sip8uk2KoF7LU2JTvqLDmjQ"
+echo ""
+echo "Para configurar o Web3Storage real, você precisa:"
+echo ""
+echo "1. Instalar o CLI do W3UP (se ainda não tiver):"
+echo "   npm install -g @web3-storage/w3cli"
+echo ""
+echo "2. Fazer login na sua conta:"
+echo "   w3 login seu-email@example.com"
+echo ""
+echo "3. Listar seus espaços:"
+echo "   w3 space ls"
+echo ""
+echo "4. Criar uma chave de agente para a aplicação:"
+echo "   w3 key create"
+echo ""
+echo "5. Copiar o arquivo .env.example para .env.local:"
+echo "   cp .env.example .env.local"
+echo ""
+echo "6. Editar .env.local com suas informações:"
+echo "   - VITE_W3S_SPACE_DID (do comando w3 space ls)"
+echo "   - VITE_W3S_AGENT_KEY (do comando w3 key create)"
+echo "   - VITE_W3S_EMAIL (seu email do Web3Storage)"
+echo ""
+echo "Após configurar, reinicie o servidor de desenvolvimento."
+echo ""
+echo "Deseja criar o arquivo .env.local agora? (y/n)"
+read -r response
+
+if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+    cp .env.example .env.local
+    echo "✅ Arquivo .env.local criado!"
+    echo "📝 Edite o arquivo com suas credenciais"
+    echo ""
+    echo "Para editar:"
+    echo "  nano .env.local"
+    echo "  ou"
+    echo "  code .env.local"
+else
+    echo "⏭️  Pulando criação do .env.local"
+fi
+
+echo ""
+echo "==================================="

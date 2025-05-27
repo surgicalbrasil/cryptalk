@@ -1,0 +1,26 @@
+#!/bin/bash
+
+echo "================================================"
+echo "🔄 Tentando provisionar novamente"
+echo "================================================"
+echo ""
+echo "Vamos tentar o processo completo:"
+echo ""
+echo "1. Primeiro, vamos garantir que estamos no espaço correto:"
+w3 space use did:key:z6MkstV6aur8VeBh9vcEun8UD6Reet7TQs16Rr2cZHjYyCHW
+
+echo ""
+echo "2. Agora execute manualmente:"
+echo ""
+echo "   w3 space provision"
+echo ""
+echo "Dicas importantes:"
+echo "- Escolha 'Via Email' com as setas e ENTER"
+echo "- Digite o email COMPLETO: surgical.brasil@gmail.com"
+echo "- Pressione ENTER após digitar o email"
+echo ""
+echo "Alternativa - Tente com GitHub:"
+echo "- Se o email não funcionar, escolha 'Via GitHub'"
+echo "- Isso abrirá seu navegador para autenticação"
+echo ""
+echo "================================================"

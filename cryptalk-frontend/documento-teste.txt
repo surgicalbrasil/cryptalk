@@ -1,0 +1,18 @@
+CrypTalk - Documento de Teste
+=============================
+
+Este é um documento de teste para verificar o upload criptografado.
+
+Informações do teste:
+- Data: 25/01/2025
+- Usuário: Surgical Brasil
+- DID: did:key:z6MkpTMTCcMMKgRFPAvoAtgf9Sip8uk2KoF7LU2JTvqLDmjQ
+- Espaço: did:key:z6MkstV6aur8VeBh9vcEun8UD6Reet7TQs16Rr2cZHjYyCHW
+
+Este arquivo será:
+1. Criptografado com AES
+2. Enviado para Web3Storage
+3. Armazenado no protocolo Filecoin
+4. Acessível via CID único
+
+Teste completo do sistema CrypTalk!

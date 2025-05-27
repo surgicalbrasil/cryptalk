@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CrypTalk - Basic Render Test</title>
+  <script type="module">
+    // Log any errors that occur during script loading
+    window.addEventListener('error', (event) => {
+      console.error('Script error:', event.error);
+      document.body.innerHTML += `
+        <div style="padding: 10px; margin: 10px; background: #ffeeee; border: 1px solid #cc0000;">
+          <h3>Script Load Error</h3>
+          <p>${event.error?.message || event.message || 'Unknown error'}</p>
+        </div>
+      `;
+    });
+
+    // Import React
+    try {
+      // Try to import React to check compatibility
+      const React = await import('react');
+      const ReactDOM = await import('react-dom/client');
+      
+      document.getElementById('react-version').textContent = React.version;
+      document.getElementById('react-status').textContent = 'Loaded successfully';
+      document.getElementById('react-status').style.color = 'green';
+    } catch (error) {
+      console.error('React import error:', error);
+      document.getElementById('react-status').textContent = 'Failed to load';
+      document.getElementById('react-status').style.color = 'red';
+      document.getElementById('react-error').textContent = error.message;
+    }
+
+    // Try to import Chakra UI
+    try {
+      const Chakra = await import('@chakra-ui/react');
+      document.getElementById('chakra-status').textContent = 'Loaded successfully';
+      document.getElementById('chakra-status').style.color = 'green';
+    } catch (error) {
+      console.error('Chakra import error:', error);
+      document.getElementById('chakra-status').textContent = 'Failed to load';
+      document.getElementById('chakra-status').style.color = 'red';
+      document.getElementById('chakra-error').textContent = error.message;
+    }
+
+    // Try to import Web3Storage client
+    try {
+      const Web3Storage = await import('@web3-storage/w3up-client');
+      document.getElementById('w3-status').textContent = 'Loaded successfully';
+      document.getElementById('w3-status').style.color = 'green';
+    } catch (error) {
+      console.error('Web3Storage import error:', error);
+      document.getElementById('w3-status').textContent = 'Failed to load';
+      document.getElementById('w3-status').style.color = 'red';
+      document.getElementById('w3-error').textContent = error.message;
+    }
+  </script>
+</head>
+<body>
+  <div style="padding: 20px; max-width: 800px; margin: 0 auto; font-family: Arial, sans-serif;">
+    <h1>CrypTalk Dependency Test</h1>
+    <p>This page tests core dependencies for CrypTalk frontend.</p>
+    
+    <div style="margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+      <h2>React</h2>
+      <p>Version: <span id="react-version">Checking...</span></p>
+      <p>Status: <span id="react-status">Loading...</span></p>
+      <p id="react-error" style="color: red;"></p>
+    </div>
+    
+    <div style="margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+      <h2>Chakra UI</h2>
+      <p>Status: <span id="chakra-status">Loading...</span></p>
+      <p id="chakra-error" style="color: red;"></p>
+    </div>
+    
+    <div style="margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px;">
+      <h2>Web3Storage Client</h2>
+      <p>Status: <span id="w3-status">Loading...</span></p>
+      <p id="w3-error" style="color: red;"></p>
+    </div>
+  </div>
+</body>
+</html>

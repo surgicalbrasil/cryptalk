@@ -1,0 +1,26 @@
+[
+  {
+    "label": "CrypTalk Web3 Messaging Demo",
+    "command": "node",
+    "args": [
+      "${workspaceFolder}/demo-messaging-server.js",
+      "did:key:z6Mkqgr8azLX7omHiisB8AWwrHcQwJ29HiKyYzP9cHb5z3cH"
+    ],
+    "env": {
+      "W3_DID": "did:key:z6Mkqgr8azLX7omHiisB8AWwrHcQwJ29HiKyYzP9cHb5z3cH",
+      "CRYPTALK_MODE": "test"
+    }
+  },
+  {
+    "label": "CrypTalk Payment Methods Demo",
+    "command": "node",
+    "args": [
+      "${workspaceFolder}/demo-payment-server.js",
+      "did:key:z6Mkqgr8azLX7omHiisB8AWwrHcQwJ29HiKyYzP9cHb5z3cH"
+    ],
+    "env": {
+      "W3_DID": "did:key:z6Mkqgr8azLX7omHiisB8AWwrHcQwJ29HiKyYzP9cHb5z3cH",
+      "PAYMENT_MODE": "test"
+    }
+  }
+]

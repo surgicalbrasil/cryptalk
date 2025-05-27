@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CrypTalk Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .error {
+            background: #fee;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #fcc;
+            border-radius: 5px;
+        }
+        .success {
+            background: #efe;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #cfc;
+            border-radius: 5px;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>CrypTalk Debug Page</h1>
+    <div id="status"></div>
+    <div id="errors"></div>
+    
+    <h2>Quick Test</h2>
+    <button onclick="testReact()">Test React</button>
+    <button onclick="testChakra()">Test Chakra UI</button>
+    <button onclick="goToApp()">Go to App</button>
+    
+    <div id="test-result"></div>
+
+    <script>
+        const status = document.getElementById('status');
+        const errors = document.getElementById('errors');
+        const testResult = document.getElementById('test-result');
+        
+        // Check for errors
+        window.addEventListener('error', (e) => {
+            errors.innerHTML += `<div class="error">Error: ${e.message} at ${e.filename}:${e.lineno}</div>`;
+        });
+        
+        function testReact() {
+            try {
+                status.innerHTML = '<div class="success">Testing React...</div>';
+                // Test if React is loaded
+                if (window.React) {
+                    testResult.innerHTML = '<div class="success">✓ React is loaded</div>';
+                } else {
+                    testResult.innerHTML = '<div class="error">✗ React not found</div>';
+                }
+            } catch (e) {
+                testResult.innerHTML = `<div class="error">✗ Error: ${e.message}</div>`;
+            }
+        }
+        
+        function testChakra() {
+            testResult.innerHTML = '<div class="success">✓ Checking Chakra UI...</div>';
+            // Will check when navigating to main app
+        }
+        
+        function goToApp() {
+            window.location.href = '/';
+        }
+        
+        // Initial status
+        status.innerHTML = '<div class="success">Debug page loaded successfully</div>';
+    </script>
+</body>
+</html>
