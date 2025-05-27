@@ -1,6 +1,5 @@
 {
-  "root": "cryptalk-frontend",
-  "installCommand": "npm install",
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist"
+  "installCommand": "cd cryptalk-frontend && npm install",
+  "buildCommand": "cd cryptalk-frontend && npm run build",
+  "outputDirectory": "cryptalk-frontend/dist"
 }
