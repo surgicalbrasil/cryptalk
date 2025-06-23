@@ -4,6 +4,7 @@ import web3StorageService from '../services/Web3StorageService';
 import type { ConnectionStatus } from '../services/Web3StorageService';
 import messagingService from '../services/MessagingService';
 import paymentService from '../services/PaymentService';
+import MagicLinkAuthService, { type AuthUser } from '../services/MagicLinkAuthService';
 
 interface AuthResult {
   success: boolean;
@@ -21,6 +22,13 @@ interface AuthContextType {
   logout: () => Promise<void>;
   connectionStatus: ConnectionStatus;
   isMetaMaskAuthenticated: () => boolean;
+  // Magic Link authentication
+  user: AuthUser | null;
+  isEmailAuthenticated: boolean;
+  isWalletConnected: boolean;
+  loginWithEmail: (email: string) => Promise<AuthResult>;
+  connectWallet: () => Promise<AuthResult>;
+  disconnectWallet: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -39,7 +47,14 @@ const AuthContext = createContext<AuthContextType>({
     spaceDid: null,
     lastChecked: null
   },
-  isMetaMaskAuthenticated: () => false
+  isMetaMaskAuthenticated: () => false,
+  // Magic Link defaults
+  user: null,
+  isEmailAuthenticated: false,
+  isWalletConnected: false,
+  loginWithEmail: async () => ({ success: false }),
+  connectWallet: async () => ({ success: false }),
+  disconnectWallet: () => {}
 });
 
 interface AuthProviderProps {
@@ -61,6 +76,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     lastChecked: null
   });
 
+  // Magic Link state
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [isEmailAuthenticated, setIsEmailAuthenticated] = useState<boolean>(false);
+  const [isWalletConnected, setIsWalletConnected] = useState<boolean>(false);
+  const magicAuthService = MagicLinkAuthService.getInstance();
+
   // Update connection status when it changes
   useEffect(() => {
     const handleStatusChange = (status: ConnectionStatus) => {
@@ -72,6 +93,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       web3StorageService.removeStatusListener(handleStatusChange);
     };
+  }, []);
+
+  // Check for existing Magic Link session
+  useEffect(() => {
+    const checkMagicSession = async () => {
+      try {
+        const isLoggedIn = await magicAuthService.isLoggedIn();
+        if (isLoggedIn) {
+          const currentUser = magicAuthService.getCurrentUser();
+          if (currentUser) {
+            setUser(currentUser);
+            setIsEmailAuthenticated(true);
+            setIsWalletConnected(currentUser.walletConnected);
+            setIsAuthenticated(true);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking Magic Link session:', error);
+      }
+    };
+
+    checkMagicSession();
   }, []);
 
   // Attempt to restore session from localStorage if available
@@ -175,6 +218,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Clean up services
       web3StorageService.disconnect();
       
+      // Logout from Magic Link if authenticated
+      if (isEmailAuthenticated) {
+        await magicAuthService.logout();
+        setUser(null);
+        setIsEmailAuthenticated(false);
+        setIsWalletConnected(false);
+      }
+      
       // Remove stored credentials
       localStorage.removeItem('cryptalk_did');
       localStorage.removeItem('cryptalk_use_mcp');
@@ -188,6 +239,86 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('Logout successful');
     } catch (error) {
       console.error('Logout error:', error);
+    }
+  };
+
+  // Magic Link email login
+  const loginWithEmail = async (email: string): Promise<AuthResult> => {
+    setIsLoading(true);
+    setLoginError(null);
+    
+    try {
+      const authUser = await magicAuthService.loginWithEmail(email);
+      setUser(authUser);
+      setIsEmailAuthenticated(true);
+      setIsWalletConnected(authUser.walletConnected);
+      setIsAuthenticated(true);
+      setIsInitialized(true);
+      
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Email login failed';
+      console.error('Magic Link login error:', errorMessage);
+      setLoginError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Connect wallet for on-chain features
+  const connectWallet = async (): Promise<AuthResult> => {
+    if (!isEmailAuthenticated) {
+      return { success: false, error: 'Must be logged in with email first' };
+    }
+
+    try {
+      // Check if MetaMask is available
+      if (!window.ethereum) {
+        return { success: false, error: 'MetaMask not installed' };
+      }
+
+      // Request account access
+      const accounts = await window.ethereum.request({
+        method: 'eth_requestAccounts'
+      });
+
+      if (accounts.length === 0) {
+        return { success: false, error: 'No accounts found' };
+      }
+
+      const walletAddress = accounts[0];
+      
+      // Connect wallet in Magic Link service
+      await magicAuthService.connectWallet(walletAddress);
+      
+      // Update state
+      setWalletAddress(walletAddress);
+      setIsWalletConnected(true);
+      
+      // Update user object
+      if (user) {
+        const updatedUser = { ...user, walletConnected: true, walletAddress };
+        setUser(updatedUser);
+      }
+
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Wallet connection failed';
+      console.error('Wallet connection error:', errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  };
+
+  // Disconnect wallet
+  const disconnectWallet = (): void => {
+    magicAuthService.disconnectWallet();
+    setWalletAddress(null);
+    setIsWalletConnected(false);
+    
+    if (user) {
+      const updatedUser = { ...user, walletConnected: false, walletAddress: undefined };
+      setUser(updatedUser);
     }
   };
   
@@ -208,7 +339,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         connectionStatus: web3StorageService.connectionStatus,
         login,
         logout,
-        isMetaMaskAuthenticated
+        isMetaMaskAuthenticated,
+        // Magic Link values
+        user,
+        isEmailAuthenticated,
+        isWalletConnected,
+        loginWithEmail,
+        connectWallet,
+        disconnectWallet
       }}
     >
       {children}

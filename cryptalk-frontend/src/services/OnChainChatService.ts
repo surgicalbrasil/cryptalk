@@ -4,6 +4,7 @@ import web3StorageService from './Web3StorageService';
 import simpleWeb3Storage from './SimpleWeb3Storage';
 import backendUploadService from './BackendUploadService';
 import AccessControlService from './AccessControlService';
+import MagicLinkAuthService from './MagicLinkAuthService';
 
 /**
  * Serviço de chat on-chain seguindo protocolo CrypTalk
@@ -113,6 +114,17 @@ class OnChainChatService {
   }
 
   /**
+   * Verifica se o usuário tem wallet conectado para recursos on-chain
+   */
+  private checkWalletConnection(): void {
+    const magicAuth = MagicLinkAuthService.getInstance();
+    
+    if (!magicAuth.isWalletConnected()) {
+      throw new Error('WALLET_CONNECTION_REQUIRED');
+    }
+  }
+
+  /**
    * Envia uma mensagem de texto on-chain
    */
   async sendMessage(content: string, recipient: string): Promise<OnChainMessage> {
@@ -120,9 +132,13 @@ class OnChainChatService {
       throw new Error('Serviço não inicializado');
     }
 
+    // Verificar se o wallet está conectado
+    this.checkWalletConnection();
+
     // Verificar acesso do usuário ao chat on-chain
     const accessControl = AccessControlService.getInstance();
-    const walletAddress = this.extractWalletFromDID(this.userDID);
+    const magicAuth = MagicLinkAuthService.getInstance();
+    const walletAddress = magicAuth.getWalletAddress() || this.extractWalletFromDID(this.userDID);
     const hasAccess = await accessControl.checkAccess(walletAddress);
     
     if (!hasAccess) {
@@ -169,9 +185,13 @@ class OnChainChatService {
       throw new Error('Serviço não inicializado');
     }
 
+    // Verificar se o wallet está conectado
+    this.checkWalletConnection();
+
     // Verificar acesso do usuário ao chat on-chain
     const accessControl = AccessControlService.getInstance();
-    const walletAddress = this.extractWalletFromDID(this.userDID);
+    const magicAuth = MagicLinkAuthService.getInstance();
+    const walletAddress = magicAuth.getWalletAddress() || this.extractWalletFromDID(this.userDID);
     const hasAccess = await accessControl.checkAccess(walletAddress);
     
     if (!hasAccess) {

@@ -28,6 +28,9 @@ import FileUpload from '../components/FileUpload';
 import AppConfig from '../config/AppConfig';
 import paymentService from '../services/PaymentService';
 import messagingService from '../services/MessagingService';
+import WalletConnectionModal from '../components/WalletConnectionModal';
+import UserProfile from '../components/UserProfile';
+import { useWalletConnection } from '../hooks/useWalletConnection';
 
 /**
  * ClientWorkflow page
@@ -37,12 +40,27 @@ import messagingService from '../services/MessagingService';
  * 3. Upload files
  */
 const ClientWorkflow: React.FC = () => {
-  const { did } = useAuth();
+  const { 
+    did, 
+    user, 
+    isEmailAuthenticated, 
+    isWalletConnected 
+  } = useAuth();
   const toast = useToast();
   const [activeTab, setActiveTab] = useState(0);
   const [paymentVerified, setPaymentVerified] = useState(false);
   const [paymentTxHash, setPaymentTxHash] = useState<string | null>(null);
   const [isMetaMaskUser, setIsMetaMaskUser] = useState(false);
+  
+  // Wallet connection hook for on-chain features
+  const {
+    isModalOpen: isWalletModalOpen,
+    requireWalletConnection,
+    handleWalletConnected,
+    closeModal
+  } = useWalletConnection({
+    feature: 'secure payments and file storage'
+  });
   
   // Check if user is logged in with MetaMask
   useEffect(() => {
@@ -89,6 +107,14 @@ const ClientWorkflow: React.FC = () => {
   
   // Handle tab changes to enforce workflow
   const handleTabChange = (index: number) => {
+    // Require wallet connection for payments and file upload (on-chain features)
+    if ((index === 1 || index === 2) && !isWalletConnected) {
+      requireWalletConnection(() => {
+        setActiveTab(index);
+      });
+      return;
+    }
+    
     // Block access to file upload until payment is verified
     if (index === 2 && !paymentVerified) {
       toast({
@@ -144,13 +170,22 @@ const ClientWorkflow: React.FC = () => {
       <Heading mb={4}>Surgical Brasil Services</Heading>
       <Grid templateColumns="1fr auto" gap={2} mb={6}>
         <Text>Follow the steps below to complete your service request.</Text>
-        {isMetaMaskUser ? (
-          <Badge colorScheme="orange" display="flex" alignItems="center">
-            <Box as="span" mr={1}>🦊</Box> Authenticated with MetaMask ({did?.substring(8, 14)}...)
-          </Badge>
-        ) : (
-          <Badge colorScheme="blue">Web3.Storage DID Authentication</Badge>
-        )}
+        <VStack spacing={2} align="end">
+          {isEmailAuthenticated && user && (
+            <Badge colorScheme="blue" display="flex" alignItems="center">
+              <Box as="span" mr={1}>📧</Box> {user.email}
+            </Badge>
+          )}
+          {isWalletConnected && user?.walletAddress ? (
+            <Badge colorScheme="green" display="flex" alignItems="center">
+              <Box as="span" mr={1}>🦊</Box> Wallet Connected ({user.walletAddress.substring(0, 6)}...)
+            </Badge>
+          ) : (
+            <Badge colorScheme="yellow" display="flex" alignItems="center">
+              <Box as="span" mr={1}>⚠️</Box> Wallet Required for On-Chain Features
+            </Badge>
+          )}
+        </VStack>
       </Grid>
       
       <Tabs index={activeTab} onChange={handleTabChange} variant="enclosed" colorScheme={isMetaMaskUser ? "orange" : "blue"}>
@@ -273,6 +308,14 @@ const ClientWorkflow: React.FC = () => {
           </TabPanel>
         </TabPanels>
       </Tabs>
+
+      {/* Wallet Connection Modal */}
+      <WalletConnectionModal
+        isOpen={isWalletModalOpen}
+        onClose={closeModal}
+        feature="secure payments and file storage"
+        onSuccess={handleWalletConnected}
+      />
     </Box>
   );
 };

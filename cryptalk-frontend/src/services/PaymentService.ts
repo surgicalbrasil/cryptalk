@@ -3,6 +3,7 @@ import web3StorageService from './Web3StorageService';
 import mcpService from './MCPService';
 import { Message } from './MessagingService';
 import AppConfig from '../config/AppConfig';
+import MagicLinkAuthService from './MagicLinkAuthService';
 
 /**
  * Interface for payment transactions
@@ -26,6 +27,17 @@ class PaymentService {
   private provider: ethers.Provider | null = null;
   private transactions: PaymentTransaction[] = [];
   private mcpIntegrationEnabled: boolean = false;
+
+  /**
+   * Verifica se o usuário tem wallet conectado para recursos de pagamento
+   */
+  private checkWalletConnection(): void {
+    const magicAuth = MagicLinkAuthService.getInstance();
+    
+    if (!magicAuth.isWalletConnected()) {
+      throw new Error('WALLET_CONNECTION_REQUIRED');
+    }
+  }
   /**
    * Initialize the payment service with a wallet
    * Note: In a real app, this would be more secure
@@ -94,6 +106,8 @@ class PaymentService {
     recipientDID?: string
   ): Promise<PaymentTransaction | null> {
     try {
+      // Verificar se o wallet está conectado
+      this.checkWalletConnection();
       // Check if MetaMask is available and connected
       if (window.ethereum && window.ethereum.selectedAddress) {
         console.log('Using MetaMask for payment');
@@ -169,6 +183,8 @@ class PaymentService {
     recipientDID?: string
   ): Promise<PaymentTransaction | null> {
     try {
+      // Verificar se o wallet está conectado
+      this.checkWalletConnection();
       if (!window.ethereum || !window.ethereum.selectedAddress) {
         throw new Error('MetaMask is not available or not connected');
       }
