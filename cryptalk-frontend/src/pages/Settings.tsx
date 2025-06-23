@@ -20,8 +20,7 @@ import {
   useToast
 } from '@chakra-ui/react';
 import { useAuth } from '../contexts/AuthContext';
-import mcpService from '../services/MCPService';
-import MCPTestPanel from '../components/MCPTestPanel';
+// MCP services removed for simplified data room interface
 
 // Note: In a web application, we can't directly start Node.js servers
 // This page would interact with already-running MCP servers in a real implementation
@@ -208,11 +207,7 @@ const Settings: React.FC = () => {
           </CardBody>
         </Card>
 
-        {/* MCP Test Panel */}
-        <Box mt={6}>
-          <Heading size="md" mb={4}>MCP Integration Testing</Heading>
-          <MCPTestPanel />
-        </Box>
+        {/* MCP features removed for simplified data room interface */}
       </VStack>
     </Box>
   );

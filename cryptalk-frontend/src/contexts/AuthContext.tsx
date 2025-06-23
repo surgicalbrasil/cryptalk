@@ -2,8 +2,7 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import web3StorageService from '../services/Web3StorageService';
 import type { ConnectionStatus } from '../services/Web3StorageService';
-import messagingService from '../services/MessagingService';
-import paymentService from '../services/PaymentService';
+// Removed messaging and payment services for simplified data room
 import MagicLinkAuthService, { type AuthUser } from '../services/MagicLinkAuthService';
 
 interface AuthResult {
@@ -172,13 +171,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('Using configured space:', spaceDID);
       }
 
-      // Initialize messaging service with optional MCP integration
-      console.log('Initializing messaging services...');
-      await messagingService.initialize(useMCP);
-
-      // Initialize payment service with optional MCP integration
-      console.log('Initializing payment services...');
-      await paymentService.initialize(undefined, useMCP);
+      // Services removed for simplified data room interface
 
       // Store credentials for auto-login
       localStorage.setItem('cryptalk_did', userDID);

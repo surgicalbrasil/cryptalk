@@ -21,8 +21,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useWalletConnection } from '../hooks/useWalletConnection';
 import WalletConnectionModal from '../components/WalletConnectionModal';
 import UserProfile from '../components/UserProfile';
-import Chat from './Chat';
-import Payments from './Payments';
+// Chat and Payments components temporarily removed - using placeholders
 
 const OnChain: React.FC = () => {
   const { 
@@ -204,7 +203,16 @@ const OnChain: React.FC = () => {
                 <AlertIcon />
                 <Text>Make secure cryptocurrency payments using your connected wallet.</Text>
               </Alert>
-              <Payments />
+              {/* Payments component placeholder */}
+              <VStack spacing={4} align="stretch" p={4} bg="gray.50" borderRadius="md">
+                <Text fontWeight="bold" textAlign="center">💰 Payment Features</Text>
+                <Text textAlign="center" color="gray.600">
+                  Payment functionality is currently being updated.
+                </Text>
+                <Text fontSize="sm" textAlign="center" color="gray.500">
+                  This section will allow secure cryptocurrency payments once the payment component is restored.
+                </Text>
+              </VStack>
             </VStack>
           </CardBody>
         </Card>
@@ -233,7 +241,22 @@ const OnChain: React.FC = () => {
               </Badge>
               
               <Box border="2px" borderColor="purple.200" borderRadius="md" p={4}>
-                <Chat chatType="on-chain" />
+                {/* Chat component placeholder */}
+                <VStack spacing={4} align="stretch" p={4} bg="purple.50" borderRadius="md">
+                  <Text fontWeight="bold" textAlign="center">⏰ Timestamped Chat</Text>
+                  <Text textAlign="center" color="gray.600">
+                    Blockchain-recorded chat functionality is currently being restored.
+                  </Text>
+                  <VStack spacing={2} align="start" fontSize="sm" color="gray.500">
+                    <Text>• 🔐 End-to-end encrypted messaging</Text>
+                    <Text>• ⏰ Immutable blockchain timestamps</Text>
+                    <Text>• ⛓️ Polygon network verification</Text>
+                    <Text>• 🗂️ Permanent message storage</Text>
+                  </VStack>
+                  <Text fontSize="xs" textAlign="center" color="gray.400" fontStyle="italic">
+                    This feature will be available once the chat component is restored.
+                  </Text>
+                </VStack>
               </Box>
               
               <Alert status="warning" size="sm">

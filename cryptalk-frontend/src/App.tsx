@@ -4,16 +4,8 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import LoginMetaMask from './pages/LoginMetaMask';
 import Dashboard from './pages/Dashboard';
-import ClientDashboard from './pages/ClientDashboard';
 import OnChain from './pages/OnChain';
-import AdminDashboard from './pages/AdminDashboard';
-import Chat from './pages/Chat';
-import Payments from './pages/Payments';
 import Settings from './pages/Settings';
-import ClientWorkflow from './pages/ClientWorkflow';
-import TestUpload from './pages/TestUpload';
-import TestDirectUpload from './pages/TestDirectUpload';
-import Web3StorageSetup from './pages/Web3StorageSetup';
 import { ChakraProvider } from '@chakra-ui/react';
 import './App.css';
 
@@ -79,7 +71,7 @@ function App() {
                 path="/dashboard" 
                 element={
                   <ProtectedRoute>
-                    <ClientWorkflow />
+                    <Dashboard />
                   </ProtectedRoute>
                 } 
               />
@@ -92,46 +84,6 @@ function App() {
                 } 
               />
               <Route 
-                path="/admin" 
-                element={
-                  <ProtectedRoute>
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/chat" 
-                element={
-                  <ProtectedRoute>
-                    <Chat />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/chat/general" 
-                element={
-                  <ProtectedRoute>
-                    <Chat chatType="off-chain" />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/chat/secure" 
-                element={
-                  <ProtectedRoute>
-                    <Chat chatType="on-chain" />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/payments" 
-                element={
-                  <ProtectedRoute>
-                    <Payments />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
                 path="/settings" 
                 element={
                   <ProtectedRoute>
@@ -139,19 +91,6 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
-              <Route 
-                path="/workflow" 
-                element={
-                  <ProtectedRoute>
-                    <ClientWorkflow />
-                  </ProtectedRoute>
-                } 
-              />
-              
-              {/* Test routes - public */}
-              <Route path="/test-upload" element={<TestUpload />} />
-              <Route path="/test-direct" element={<TestDirectUpload />} />
-              <Route path="/w3-setup" element={<Web3StorageSetup />} />
               
               {/* Catch all route */}
               <Route path="*" element={<Navigate to="/" replace />} />

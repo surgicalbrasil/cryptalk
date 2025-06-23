@@ -5,88 +5,258 @@ import {
   GridItem, 
   Heading, 
   Text, 
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  Stack,
+  Badge,
+  Icon,
+  VStack,
   HStack,
-  Button
+  Tabs,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel,
+  useColorModeValue
 } from '@chakra-ui/react';
+import { FiFileText, FiUpload, FiUsers, FiShield, FiChevronRight } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import Web3StorageStatus from '../components/Web3StorageStatus';
-import mcpService from '../services/MCPService';
 
 const Dashboard: React.FC = () => {
   const { did } = useAuth();
   const navigate = useNavigate();
+  const [selectedDocType, setSelectedDocType] = useState<string>('');
+  
+  const bgColor = useColorModeValue('gray.50', 'gray.900');
+  const cardBg = useColorModeValue('white', 'gray.800');
 
-  const handleNavigateToChat = () => {
-    navigate('/chat');
-  };
-
-  const handleNavigateToPayments = () => {
-    navigate('/payments');
-  };
+  const documentTypes = [
+    { id: 'pitch', name: 'Pitch Deck', icon: FiFileText, color: 'blue' },
+    { id: 'financial', name: 'Financial Projections', icon: FiFileText, color: 'green' },
+    { id: 'patent', name: 'Patents', icon: FiShield, color: 'purple' },
+    { id: 'captable', name: 'Cap Table', icon: FiUsers, color: 'orange' },
+    { id: 'other', name: 'Other Documents', icon: FiFileText, color: 'gray' }
+  ];
 
   return (
-    <Box maxW="1200px" mx="auto" p={5}>
-      <Box mb={8}>
-        <Heading as="h1" size="xl" mb={2}>
-          Welcome to CrypTalk
+    <Box maxW="1400px" mx="auto" p={6} bg={bgColor} minH="calc(100vh - 64px)">
+      {/* Header */}
+      <VStack spacing={1} mb={8} align="start">
+        <Heading as="h1" size="2xl" color="gray.800">
+          Data Room
         </Heading>
-        <Text color="gray.600">
-          Your decentralized messaging platform with Web3.Storage integration
+        <Text fontSize="lg" color="gray.600">
+          Create NDAs, upload documents, and manage secure file sharing with AI-powered review
         </Text>
+      </VStack>
+
+      <Tabs size="lg" variant="enclosed" colorScheme="blue">
+        <TabList>
+          <Tab>📝 NDA Creation</Tab>
+          <Tab>📁 Document Upload</Tab>
+          <Tab>🤖 AI Review</Tab>
+        </TabList>
+
+        <TabPanels>
+          {/* NDA Creation Tab */}
+          <TabPanel>
+            <Grid templateColumns={{ base: "1fr", lg: "2fr 1fr" }} gap={8}>
+              <GridItem>
+                <Card bg={cardBg}>
+                  <CardHeader>
+                    <HStack>
+                      <Icon as={FiFileText} color="blue.500" boxSize={6} />
+                      <Heading size="lg">Create Custom NDA</Heading>
+                    </HStack>
+                  </CardHeader>
+                  <CardBody>
+                    <VStack spacing={4} align="stretch">
+                      <Text color="gray.600">
+                        Generate a customized Non-Disclosure Agreement using AI based on your specific requirements.
+                      </Text>
+                      <Button 
+                        colorScheme="blue" 
+                        size="lg"
+                        leftIcon={<FiFileText />}
+                        rightIcon={<FiChevronRight />}
+                      >
+                        Start NDA Creation
+                      </Button>
+                    </VStack>
+                  </CardBody>
+                </Card>
+              </GridItem>
+              
+              <GridItem>
+                <Card bg={cardBg}>
+                  <CardHeader>
+                    <Heading size="md">Recent NDAs</Heading>
+                  </CardHeader>
+                  <CardBody>
+                    <VStack spacing={3} align="stretch">
+                      <Text fontSize="sm" color="gray.500">
+                        No NDAs created yet
+                      </Text>
+                    </VStack>
+                  </CardBody>
+                </Card>
+              </GridItem>
+            </Grid>
+          </TabPanel>
+
+          {/* Document Upload Tab */}
+          <TabPanel>
+            <Grid templateColumns={{ base: "1fr", lg: "1fr 1fr" }} gap={6}>
+              <GridItem>
+                <Card bg={cardBg}>
+                  <CardHeader>
+                    <HStack>
+                      <Icon as={FiUpload} color="green.500" boxSize={6} />
+                      <Heading size="lg">Upload Documents</Heading>
+                    </HStack>
+                  </CardHeader>
+                  <CardBody>
+                    <VStack spacing={4} align="stretch">
+                      <Text color="gray.600" mb={4}>
+                        Select document type and upload your files securely
+                      </Text>
+                      
+                      <Grid templateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap={3}>
+                        {documentTypes.map((type) => (
+                          <Button
+                            key={type.id}
+                            variant={selectedDocType === type.id ? 'solid' : 'outline'}
+                            colorScheme={type.color}
+                            leftIcon={<Icon as={type.icon} />}
+                            onClick={() => setSelectedDocType(type.id)}
+                            size="sm"
+                          >
+                            {type.name}
+                          </Button>
+                        ))}
+                      </Grid>
+                      
+                      {selectedDocType && (
+                        <Button 
+                          colorScheme="green" 
+                          size="lg"
+                          leftIcon={<FiUpload />}
+                        >
+                          Upload Files
+                        </Button>
+                      )}
+                    </VStack>
+                  </CardBody>
+                </Card>
+              </GridItem>
+              
+              <GridItem>
+                <Card bg={cardBg}>
+                  <CardHeader>
+                    <Heading size="md">Uploaded Documents</Heading>
+                  </CardHeader>
+                  <CardBody>
+                    <VStack spacing={3} align="stretch">
+                      <Text fontSize="sm" color="gray.500">
+                        No documents uploaded yet
+                      </Text>
+                    </VStack>
+                  </CardBody>
+                </Card>
+              </GridItem>
+            </Grid>
+          </TabPanel>
+
+          {/* AI Review Tab */}
+          <TabPanel>
+            <Grid templateColumns={{ base: "1fr", lg: "2fr 1fr" }} gap={8}>
+              <GridItem>
+                <Card bg={cardBg}>
+                  <CardHeader>
+                    <HStack>
+                      <Icon as={FiUsers} color="purple.500" boxSize={6} />
+                      <Heading size="lg">AI Agent Review</Heading>
+                    </HStack>
+                  </CardHeader>
+                  <CardBody>
+                    <VStack spacing={4} align="stretch">
+                      <Text color="gray.600">
+                        Select AI personas to review your documents based on expertise areas
+                      </Text>
+                      
+                      <Stack spacing={3}>
+                        <HStack justify="space-between" p={3} border="1px" borderColor="gray.200" borderRadius="md">
+                          <VStack align="start" spacing={1}>
+                            <Text fontWeight="semibold">Financial Analyst</Text>
+                            <Text fontSize="sm" color="gray.600">Reviews financial projections and cap tables</Text>
+                          </VStack>
+                          <Badge colorScheme="blue">Available</Badge>
+                        </HStack>
+                        
+                        <HStack justify="space-between" p={3} border="1px" borderColor="gray.200" borderRadius="md">
+                          <VStack align="start" spacing={1}>
+                            <Text fontWeight="semibold">Legal Expert</Text>
+                            <Text fontSize="sm" color="gray.600">Reviews patents and legal documents</Text>
+                          </VStack>
+                          <Badge colorScheme="green">Available</Badge>
+                        </HStack>
+                        
+                        <HStack justify="space-between" p={3} border="1px" borderColor="gray.200" borderRadius="md">
+                          <VStack align="start" spacing={1}>
+                            <Text fontWeight="semibold">Business Strategist</Text>
+                            <Text fontSize="sm" color="gray.600">Reviews pitch decks and business plans</Text>
+                          </VStack>
+                          <Badge colorScheme="purple">Available</Badge>
+                        </HStack>
+                      </Stack>
+                    </VStack>
+                  </CardBody>
+                </Card>
+              </GridItem>
+              
+              <GridItem>
+                <Card bg={cardBg}>
+                  <CardHeader>
+                    <Heading size="md">Review Results</Heading>
+                  </CardHeader>
+                  <CardBody>
+                    <VStack spacing={3} align="stretch">
+                      <Text fontSize="sm" color="gray.500">
+                        No reviews completed yet
+                      </Text>
+                    </VStack>
+                  </CardBody>
+                </Card>
+              </GridItem>
+            </Grid>
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
+
+      {/* Quick Actions */}
+      <Box mt={8}>
+        <Card bg={cardBg} borderColor="blue.200" borderWidth={2}>
+          <CardBody>
+            <HStack justify="space-between" align="center">
+              <VStack align="start" spacing={1}>
+                <Text fontWeight="semibold" fontSize="lg">Ready to share confidentially?</Text>
+                <Text color="gray.600">Use our On-chain interface for secure, encrypted file sharing</Text>
+              </VStack>
+              <Button 
+                colorScheme="green" 
+                size="lg"
+                leftIcon={<>⛓️</>}
+                onClick={() => navigate('/onchain')}
+              >
+                Go to On Chain
+              </Button>
+            </HStack>
+          </CardBody>
+        </Card>
       </Box>
-
-      {/* MCP Status */}
-      <Box mb={8}>
-        <Box p={5} borderWidth={1} borderRadius="lg" bg="blue.50" borderColor="blue.200">
-          <Heading size="md" mb={2} color="blue.700">Surgical Brasil Services</Heading>
-          <Text mb={4}>
-            Access the complete workflow for Surgical Brasil services. Chat with Surgical Brasil,
-            make cryptocurrency payments, and securely upload files.
-          </Text>
-          <Button 
-            colorScheme="blue" 
-            size="lg" 
-            onClick={() => navigate('/workflow')}
-            _hover={{ bg: 'blue.600' }}
-          >
-            Start Workflow
-          </Button>
-        </Box>
-      </Box>
-
-      {/* Storage Status */}
-      <Box mb={8}>
-        <Web3StorageStatus />
-      </Box>
-
-      <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6}>
-        <GridItem>
-          <Box height="100%" p={5} borderWidth={1} borderRadius="lg" bg="white">
-            <Heading size="md" mb={4}>Messaging</Heading>
-            <Text mb={4}>
-              Send and receive encrypted messages using Web3.Storage. All messages are stored
-              in a decentralized way and encrypted with your DID.
-            </Text>
-            <Button colorScheme="blue" onClick={handleNavigateToChat}>
-              Open Chat
-            </Button>
-          </Box>
-        </GridItem>
-
-        <GridItem>
-          <Box height="100%" p={5} borderWidth={1} borderRadius="lg" bg="white">
-            <Heading size="md" mb={4}>Payments</Heading>
-            <Text mb={4}>
-              Send cryptocurrency payments and store transaction records securely
-              on Web3.Storage with your DID authentication.
-            </Text>
-            <Button colorScheme="green" onClick={handleNavigateToPayments}>
-              Manage Payments
-            </Button>
-          </Box>
-        </GridItem>
-      </Grid>
     </Box>
   );
 };

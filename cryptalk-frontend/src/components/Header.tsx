@@ -66,51 +66,10 @@ const Header: React.FC = () => {
               size="sm"
               onClick={() => navigate('/dashboard')}
             >
-              Dashboard
+              Data Room
             </Button>
 
-            {/* Chat Dropdown */}
-            <Menu>
-              <MenuButton
-                as={Button}
-                rightIcon={<ChevronDownIcon />}
-                leftIcon={<ChatIcon />}
-                variant={location.pathname.includes('/chat') ? 'solid' : 'ghost'}
-                colorScheme={location.pathname.includes('/chat') ? 'blue' : 'gray'}
-                size="sm"
-              >
-                Chats
-              </MenuButton>
-              <MenuList>
-                <MenuItem 
-                  icon={<FiMessageCircle color="#3182CE" />}
-                  onClick={() => navigate('/chat/general')}
-                >
-                  <HStack justify="space-between" w="full">
-                    <Text>Chat Geral</Text>
-                    <Badge colorScheme="blue" size="sm">Off-chain</Badge>
-                  </HStack>
-                </MenuItem>
-                <MenuItem 
-                  icon={<FiShield color="#38A169" />}
-                  onClick={() => navigate('/chat/secure')}
-                >
-                  <HStack justify="space-between" w="full">
-                    <Text>Chat Médico</Text>
-                    <Badge colorScheme="green" size="sm">On-chain</Badge>
-                  </HStack>
-                </MenuItem>
-                <MenuDivider />
-                <MenuItem fontSize="xs" color="gray.500" isDisabled>
-                  <Text>Off-chain: Grátis e instantâneo</Text>
-                </MenuItem>
-                <MenuItem fontSize="xs" color="gray.500" isDisabled>
-                  <Text>On-chain: Seguro e criptografado</Text>
-                </MenuItem>
-              </MenuList>
-            </Menu>
-
-            {/* On Chain Button */}
+            {/* On Chain Button - Keep as requested */}
             <Button
               leftIcon={<>⛓️</>}
               variant={isActive('/onchain') ? 'solid' : 'ghost'}
@@ -119,40 +78,6 @@ const Header: React.FC = () => {
               onClick={() => navigate('/onchain')}
             >
               On Chain
-            </Button>
-
-            {/* Admin Panel - Only show for admin */}
-            {isAdmin && (
-              <Button
-                leftIcon={<SettingsIcon />}
-                variant={isActive('/admin') ? 'solid' : 'ghost'}
-                colorScheme={isActive('/admin') ? 'purple' : 'gray'}
-                size="sm"
-                onClick={() => navigate('/admin')}
-              >
-                Painel Admin
-              </Button>
-            )}
-
-            {/* Payments Button */}
-            <Button
-              leftIcon={<>💳</>}
-              variant={isActive('/payments') ? 'solid' : 'ghost'}
-              colorScheme={isActive('/payments') ? 'orange' : 'gray'}
-              size="sm"
-              onClick={() => navigate('/payments')}
-            >
-              Pagamentos
-            </Button>
-
-            {/* Surgical Brasil Button */}
-            <Button
-              variant={isActive('/workflow') ? 'solid' : 'outline'}
-              colorScheme="teal"
-              size="sm"
-              onClick={() => navigate('/workflow')}
-            >
-              Surgical Brasil
             </Button>
           </HStack>
         )}
@@ -193,32 +118,10 @@ const Header: React.FC = () => {
                 />
                 <MenuList>
                   <MenuItem onClick={() => navigate('/dashboard')}>
-                    Dashboard
-                  </MenuItem>
-                  <MenuDivider />
-                  <MenuItem onClick={() => navigate('/chat/general')}>
-                    💬 Chat Geral
-                  </MenuItem>
-                  <MenuItem onClick={() => navigate('/chat/secure')}>
-                    🔒 Chat Médico
+                    📁 Data Room
                   </MenuItem>
                   <MenuItem onClick={() => navigate('/onchain')}>
                     ⛓️ On Chain
-                  </MenuItem>
-                  <MenuItem onClick={() => navigate('/payments')}>
-                    💳 Pagamentos
-                  </MenuItem>
-                  {isAdmin && (
-                    <>
-                      <MenuDivider />
-                      <MenuItem onClick={() => navigate('/admin')} color="purple.500">
-                        🛠️ Painel Admin
-                      </MenuItem>
-                    </>
-                  )}
-                  <MenuDivider />
-                  <MenuItem onClick={() => navigate('/workflow')}>
-                    🏥 Surgical Brasil
                   </MenuItem>
                 </MenuList>
               </Menu>
