@@ -4,7 +4,6 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import LoginMetaMask from './pages/LoginMetaMask';
 import Dashboard from './pages/Dashboard';
-import OnChain from './pages/OnChain';
 import Settings from './pages/Settings';
 import { ChakraProvider } from '@chakra-ui/react';
 import './App.css';
@@ -69,14 +68,6 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Dashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/onchain" 
-                element={
-                  <ProtectedRoute>
-                    <OnChain />
                   </ProtectedRoute>
                 } 
               />

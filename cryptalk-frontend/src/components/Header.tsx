@@ -56,31 +56,7 @@ const Header: React.FC = () => {
           <Badge colorScheme="green" variant="subtle">Beta</Badge>
         </HStack>
         
-        {isAuthenticated && (
-          <HStack spacing={4} flex={1} justify="center" display={{ base: 'none', md: 'flex' }}>
-            {/* Dashboard */}
-            <Button
-              leftIcon={<FiGrid />}
-              variant={isActive('/dashboard') ? 'solid' : 'ghost'}
-              colorScheme={isActive('/dashboard') ? 'blue' : 'gray'}
-              size="sm"
-              onClick={() => navigate('/dashboard')}
-            >
-              Data Room
-            </Button>
-
-            {/* On Chain Button - Keep as requested */}
-            <Button
-              leftIcon={<>⛓️</>}
-              variant={isActive('/onchain') ? 'solid' : 'ghost'}
-              colorScheme={isActive('/onchain') ? 'green' : 'gray'}
-              size="sm"
-              onClick={() => navigate('/onchain')}
-            >
-              On Chain
-            </Button>
-          </HStack>
-        )}
+        {/* Navigation removed - now handled by main dashboard tabs */}
 
         {/* Right side actions */}
         <HStack spacing={2}>
@@ -106,31 +82,9 @@ const Header: React.FC = () => {
                 </MenuList>
               </Menu>
 
-              {/* Mobile menu for small screens */}
-              <Menu>
-                <MenuButton
-                  as={IconButton}
-                  icon={<ChevronDownIcon />}
-                  variant="outline"
-                  size="sm"
-                  display={{ base: 'flex', md: 'none' }}
-                  aria-label="Menu"
-                />
-                <MenuList>
-                  <MenuItem onClick={() => navigate('/dashboard')}>
-                    📁 Data Room
-                  </MenuItem>
-                  <MenuItem onClick={() => navigate('/onchain')}>
-                    ⛓️ On Chain
-                  </MenuItem>
-                </MenuList>
-              </Menu>
+              {/* Mobile navigation removed - handled by dashboard tabs */}
             </>
-          ) : (
-            <Button colorScheme="blue" onClick={() => navigate('/login')} size="sm">
-              Entrar
-            </Button>
-          )}
+          ) : null}
         </HStack>
       </Flex>
     </Box>
