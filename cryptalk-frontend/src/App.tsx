@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import LoginMetaMask from './pages/LoginMetaMask';
 import Dashboard from './pages/Dashboard';
 import ClientDashboard from './pages/ClientDashboard';
+import OnChain from './pages/OnChain';
 import AdminDashboard from './pages/AdminDashboard';
 import Chat from './pages/Chat';
 import Payments from './pages/Payments';
@@ -79,6 +80,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <ClientWorkflow />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/onchain" 
+                element={
+                  <ProtectedRoute>
+                    <OnChain />
                   </ProtectedRoute>
                 } 
               />

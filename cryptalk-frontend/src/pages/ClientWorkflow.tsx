@@ -107,8 +107,8 @@ const ClientWorkflow: React.FC = () => {
   
   // Handle tab changes to enforce workflow
   const handleTabChange = (index: number) => {
-    // Require wallet connection for On Chain tab, payments and file upload
-    if ((index === 1 || index === 2 || index === 3) && !isWalletConnected) {
+    // Require wallet connection for payments and file upload (on-chain features)
+    if ((index === 1 || index === 2) && !isWalletConnected) {
       requireWalletConnection(() => {
         setActiveTab(index);
       });
@@ -116,7 +116,7 @@ const ClientWorkflow: React.FC = () => {
     }
     
     // Block access to file upload until payment is verified
-    if (index === 3 && !paymentVerified) {
+    if (index === 2 && !paymentVerified) {
       toast({
         title: 'Payment Required',
         description: 'Please complete payment before uploading files',
@@ -145,7 +145,7 @@ const ClientWorkflow: React.FC = () => {
     
     // Automatically move to the file upload tab
     setTimeout(() => {
-      setActiveTab(3);
+      setActiveTab(2);
     }, 1500);
   };
   
@@ -191,9 +191,8 @@ const ClientWorkflow: React.FC = () => {
       <Tabs index={activeTab} onChange={handleTabChange} variant="enclosed" colorScheme={isMetaMaskUser ? "orange" : "blue"}>
         <TabList>
           <Tab>1. Chat &amp; Discuss</Tab>
-          <Tab>2. On Chain</Tab>
-          <Tab>3. Make Payment</Tab>
-          <Tab isDisabled={!paymentVerified}>4. Upload Files</Tab>
+          <Tab>2. Make Payment</Tab>
+          <Tab isDisabled={!paymentVerified}>3. Upload Files</Tab>
         </TabList>
         
         <TabPanels>
@@ -225,126 +224,8 @@ const ClientWorkflow: React.FC = () => {
                 width="200px"
                 alignSelf="center"
               >
-                Continue to On Chain
+                Continue to Payment
               </Button>
-            </VStack>
-          </TabPanel>
-          
-          {/* On Chain Tab Panel */}
-          <TabPanel>
-            <VStack spacing={6} align="stretch">
-              <Alert status="info">
-                <AlertIcon />
-                <Box>
-                  <Text fontWeight="bold">Step 2: On Chain Features</Text>
-                  <Text>Access secure blockchain features including wallet connection, payments, and timestamped chat records.</Text>
-                </Box>
-              </Alert>
-
-              {/* Wallet Connection Section */}
-              <Card variant="outline">
-                <CardHeader bg="green.50" py={3}>
-                  <Heading size="md">🦊 Wallet Connection</Heading>
-                </CardHeader>
-                <CardBody>
-                  <VStack spacing={4} align="stretch">
-                    {isWalletConnected && user?.walletAddress ? (
-                      <Alert status="success">
-                        <AlertIcon />
-                        <Box>
-                          <Text fontWeight="bold">Wallet Connected</Text>
-                          <Text fontSize="sm">Address: {user.walletAddress.substring(0, 6)}...{user.walletAddress.substring(user.walletAddress.length - 4)}</Text>
-                        </Box>
-                      </Alert>
-                    ) : (
-                      <Alert status="warning">
-                        <AlertIcon />
-                        <Box>
-                          <Text fontWeight="bold">Wallet Not Connected</Text>
-                          <Text fontSize="sm">Connect your MetaMask wallet to access on-chain features</Text>
-                        </Box>
-                      </Alert>
-                    )}
-                    
-                    {!isWalletConnected && (
-                      <Button
-                        colorScheme="orange"
-                        onClick={() => requireWalletConnection(() => {})}
-                        leftIcon={<Text>🦊</Text>}
-                      >
-                        Connect MetaMask Wallet
-                      </Button>
-                    )}
-                  </VStack>
-                </CardBody>
-              </Card>
-
-              {/* Payment Section */}
-              {isWalletConnected && (
-                <Card variant="outline">
-                  <CardHeader bg="blue.50" py={3}>
-                    <Heading size="md">💰 Secure Payment</Heading>
-                  </CardHeader>
-                  <CardBody>
-                    <VStack spacing={4} align="stretch">
-                      <Text color="gray.600">
-                        Make secure cryptocurrency payments directly from your wallet for premium services.
-                      </Text>
-                      <Button
-                        colorScheme="blue"
-                        onClick={() => handleTabChange(2)}
-                        width="200px"
-                      >
-                        Go to Payment
-                      </Button>
-                    </VStack>
-                  </CardBody>
-                </Card>
-              )}
-
-              {/* Timestamped Chat Section */}
-              {isWalletConnected && (
-                <Card variant="outline">
-                  <CardHeader bg="purple.50" py={3}>
-                    <Heading size="md">⏰ Timestamped Secure Chat</Heading>
-                  </CardHeader>
-                  <CardBody>
-                    <VStack spacing={4} align="stretch">
-                      <Text color="gray.600">
-                        All messages in this chat are recorded on the blockchain with immutable timestamps for legal compliance and record keeping.
-                      </Text>
-                      
-                      {/* On Chain Chat Component */}
-                      <Box border="1px" borderColor="gray.200" borderRadius="md" p={4} minH="300px">
-                        <Text fontSize="sm" color="gray.500" mb={3}>
-                          🔐 On-Chain Secure Chat - All messages are encrypted and timestamped
-                        </Text>
-                        <Chat chatType="on-chain" />
-                      </Box>
-                      
-                      <Alert status="info" size="sm">
-                        <AlertIcon />
-                        <Text fontSize="sm">
-                          Messages sent here are encrypted, stored on Polygon blockchain, and can be used as legal records.
-                        </Text>
-                      </Alert>
-                    </VStack>
-                  </CardBody>
-                </Card>
-              )}
-
-              <Divider my={2} />
-              
-              {isWalletConnected && (
-                <Button 
-                  colorScheme="blue" 
-                  onClick={() => handleTabChange(2)}
-                  width="200px"
-                  alignSelf="center"
-                >
-                  Continue to Payment
-                </Button>
-              )}
             </VStack>
           </TabPanel>
           
@@ -354,7 +235,7 @@ const ClientWorkflow: React.FC = () => {
               <Alert status="info">
                 <AlertIcon />
                 <Box>
-                  <Text fontWeight="bold">Step 3: Complete Payment</Text>
+                  <Text fontWeight="bold">Step 2: Complete Payment</Text>
                   {isMetaMaskUser ? (
                     <Text>Send cryptocurrency payment to Surgical Brasil's wallet address using your connected MetaMask wallet. Once payment is verified, you can upload files.</Text>
                   ) : (
@@ -390,7 +271,7 @@ const ClientWorkflow: React.FC = () => {
               {paymentVerified && (
                 <Button 
                   colorScheme="blue" 
-                  onClick={() => handleTabChange(3)}
+                  onClick={() => handleTabChange(2)}
                   width="200px"
                   alignSelf="center"
                 >
@@ -406,7 +287,7 @@ const ClientWorkflow: React.FC = () => {
               <Alert status="info">
                 <AlertIcon />
                 <Box>
-                  <Text fontWeight="bold">Step 4: Upload Files</Text>
+                  <Text fontWeight="bold">Step 3: Upload Files</Text>
                   <Text>Upload files securely to Web3.Storage. Files are encrypted and accessible only by you and Surgical Brasil.</Text>
                 </Box>
               </Alert>

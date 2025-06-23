@@ -110,6 +110,17 @@ const Header: React.FC = () => {
               </MenuList>
             </Menu>
 
+            {/* On Chain Button */}
+            <Button
+              leftIcon={<>⛓️</>}
+              variant={isActive('/onchain') ? 'solid' : 'ghost'}
+              colorScheme={isActive('/onchain') ? 'green' : 'gray'}
+              size="sm"
+              onClick={() => navigate('/onchain')}
+            >
+              On Chain
+            </Button>
+
             {/* Admin Panel - Only show for admin */}
             {isAdmin && (
               <Button
@@ -190,6 +201,12 @@ const Header: React.FC = () => {
                   </MenuItem>
                   <MenuItem onClick={() => navigate('/chat/secure')}>
                     🔒 Chat Médico
+                  </MenuItem>
+                  <MenuItem onClick={() => navigate('/onchain')}>
+                    ⛓️ On Chain
+                  </MenuItem>
+                  <MenuItem onClick={() => navigate('/payments')}>
+                    💳 Pagamentos
                   </MenuItem>
                   {isAdmin && (
                     <>
