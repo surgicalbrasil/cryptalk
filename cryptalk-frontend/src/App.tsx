@@ -9,15 +9,16 @@ import Settings from './pages/Settings';
 import { ChakraProvider } from '@chakra-ui/react';
 import './App.css';
 
-// Protected route component
+// Protected route component - TEMPORARILY DISABLED FOR TESTING
 const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
-  const { isAuthenticated, isEmailAuthenticated } = useAuth();
+  // const { isAuthenticated, isEmailAuthenticated } = useAuth();
 
-  // Allow access if either traditional auth or email auth is active
-  if (!isAuthenticated && !isEmailAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
+  // // Allow access if either traditional auth or email auth is active
+  // if (!isAuthenticated && !isEmailAuthenticated) {
+  //   return <Navigate to="/login" replace />;
+  // }
 
+  // TEMP: Skip authentication for testing
   return children;
 };
 
@@ -43,11 +44,7 @@ function App() {
               {/* Public routes */}
               <Route 
                 path="/" 
-                element={
-                  <PublicRoute>
-                    <Login />
-                  </PublicRoute>
-                } 
+                element={<Navigate to="/dashboard" replace />}
               />
               <Route 
                 path="/login" 
