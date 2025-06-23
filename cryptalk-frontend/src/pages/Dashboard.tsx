@@ -76,10 +76,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <Box maxW="1400px" mx="auto" p={6} bg={bgColor} minH="calc(100vh - 64px)">
-      {/* Main Header */}
-      <Heading as="h1" size="2xl" color="gray.800" mb={8}>
-        CrypTalk
-      </Heading>
 
       {/* Main Tabs: Off Chain Space and On Chain Space */}
       <Tabs size="lg" variant="enclosed" colorScheme="blue" defaultIndex={0}>

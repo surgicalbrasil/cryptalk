@@ -4,6 +4,7 @@ import {
   Flex, 
   Button, 
   HStack,
+  VStack,
   IconButton,
   Menu,
   MenuButton,
@@ -43,18 +44,22 @@ const Header: React.FC = () => {
     <Box bg={bgColor} px={4} boxShadow="sm" borderBottom="1px" borderColor={borderColor}>
       <Flex h={16} alignItems="center" justifyContent="space-between">
         {/* Logo */}
-        <HStack spacing={3}>
-          <Box 
-            fontWeight="bold" 
-            fontSize="xl" 
-            cursor="pointer" 
-            onClick={() => navigate('/')}
-            color="blue.600"
-          >
-            CrypTalk
-          </Box>
-          <Badge colorScheme="green" variant="subtle">Beta</Badge>
-        </HStack>
+        <VStack spacing={0} align="start">
+          <HStack spacing={2}>
+            <Box 
+              fontWeight="bold" 
+              fontSize="xl" 
+              cursor="pointer" 
+              onClick={() => navigate('/')}
+              color="blue.600"
+            >
+              CrypTalk Platform
+            </Box>
+          </HStack>
+          <Text fontSize="xs" color="gray.500">
+            Complete solution for secure document sharing and blockchain integration
+          </Text>
+        </VStack>
         
         {/* Navigation removed - now handled by main dashboard tabs */}
 
