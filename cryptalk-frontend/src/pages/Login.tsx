@@ -54,12 +54,13 @@ const Login: React.FC = () => {
       if (result.success) {
         toast({
           title: 'Check your email',
-          description: 'We sent you a magic link to sign in',
+          description: 'We sent you a magic link to sign in. Click the link in your email to complete authentication.',
           status: 'success',
-          duration: 5000,
+          duration: 10000,
           isClosable: true,
         });
-        // Magic Link will handle the redirect after successful login
+        // Note: The user will be redirected when they click the magic link in their email
+        // and return to the application
       } else {
         toast({
           title: 'Login failed',

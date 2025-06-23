@@ -17,10 +17,17 @@ class MagicLinkAuthService {
   private constructor() {
     // Initialize Magic instance with your publishable API key
     if (typeof window !== 'undefined') {
-      // Using the provided Magic Link public key
-      this.magic = new Magic('pk_live_20134EF9B8F26232', {
-        network: 'polygon-mumbai' // Using Mumbai testnet to match the blockchain config
-      });
+      try {
+        // Using the provided Magic Link public key
+        this.magic = new Magic('pk_live_20134EF9B8F26232', {
+          network: 'polygon-mumbai' // Using Mumbai testnet to match the blockchain config
+        });
+        
+        // Debug: Check what methods are available
+        console.log('Magic SDK initialized. Available user methods:', Object.getOwnPropertyNames(this.magic.user));
+      } catch (error) {
+        console.error('Failed to initialize Magic SDK:', error);
+      }
     }
   }
 
@@ -37,24 +44,24 @@ class MagicLinkAuthService {
     }
 
     try {
-      // Send Magic Link email
-      const didToken = await this.magic.auth.loginWithMagicLink({ email });
+      // Send Magic Link email - this will trigger email sending but not wait for completion
+      await this.magic.auth.loginWithMagicLink({ email });
       
-      // Get user metadata
-      const metadata = await this.magic.user.getMetadata();
+      // For Magic Link, the actual authentication happens when user clicks the link
+      // We should return success for email sending, but the user object will be set
+      // when they actually click the link and return to the app
       
-      // Create user object
+      // Create a preliminary user object indicating email was sent
       this.currentUser = {
-        email: metadata.email || email,
-        publicAddress: metadata.publicAddress || '',
-        isLoggedIn: true,
+        email: email,
+        publicAddress: '', // Will be filled when user completes Magic Link flow
+        isLoggedIn: false, // Not yet logged in until they click the link
         walletConnected: false
       };
 
-      // Store auth state in localStorage
-      localStorage.setItem('magicAuth', JSON.stringify({
-        email: this.currentUser.email,
-        publicAddress: this.currentUser.publicAddress,
+      // Store pending auth state
+      localStorage.setItem('magicAuthPending', JSON.stringify({
+        email: email,
         timestamp: Date.now()
       }));
 
@@ -85,15 +92,43 @@ class MagicLinkAuthService {
     try {
       const isLoggedIn = await this.magic.user.isLoggedIn();
       
-      if (isLoggedIn && !this.currentUser) {
-        // Restore user session
-        const metadata = await this.magic.user.getMetadata();
-        this.currentUser = {
-          email: metadata.email || '',
-          publicAddress: metadata.publicAddress || '',
-          isLoggedIn: true,
-          walletConnected: this.checkWalletConnection()
-        };
+      if (isLoggedIn) {
+        // User has completed Magic Link authentication
+        if (!this.currentUser || !this.currentUser.isLoggedIn) {
+          try {
+            // Get user info after successful Magic Link authentication
+            const metadata = await this.magic.user.getMetadata();
+            this.currentUser = {
+              email: metadata.email || '',
+              publicAddress: metadata.publicAddress || '',
+              isLoggedIn: true,
+              walletConnected: this.checkWalletConnection()
+            };
+
+            // Update localStorage with complete auth state
+            localStorage.setItem('magicAuth', JSON.stringify({
+              email: this.currentUser.email,
+              publicAddress: this.currentUser.publicAddress,
+              timestamp: Date.now()
+            }));
+
+            // Clear pending state
+            localStorage.removeItem('magicAuthPending');
+          } catch (infoError) {
+            console.warn('Could not get user info, but user is logged in:', infoError);
+            // Use pending email if available
+            const pending = localStorage.getItem('magicAuthPending');
+            if (pending) {
+              const { email } = JSON.parse(pending);
+              this.currentUser = {
+                email: email,
+                publicAddress: '',
+                isLoggedIn: true,
+                walletConnected: false
+              };
+            }
+          }
+        }
       }
 
       return isLoggedIn;
