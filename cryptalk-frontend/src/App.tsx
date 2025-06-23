@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
+import Login from './pages/Login';
 import LoginMetaMask from './pages/LoginMetaMask';
 import Dashboard from './pages/Dashboard';
 import ClientDashboard from './pages/ClientDashboard';
@@ -17,9 +18,10 @@ import './App.css';
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isEmailAuthenticated } = useAuth();
 
-  if (!isAuthenticated) {
+  // Allow access if either traditional auth or email auth is active
+  if (!isAuthenticated && !isEmailAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
@@ -28,9 +30,10 @@ const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
 
 // Public route component (redirects to dashboard if already logged in)
 const PublicRoute = ({ children }: { children: React.ReactElement }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isEmailAuthenticated } = useAuth();
 
-  if (isAuthenticated) {
+  // Redirect if either traditional auth or email auth is active
+  if (isAuthenticated || isEmailAuthenticated) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -49,12 +52,20 @@ function App() {
                 path="/" 
                 element={
                   <PublicRoute>
-                    <LoginMetaMask />
+                    <Login />
                   </PublicRoute>
                 } 
               />
               <Route 
                 path="/login" 
+                element={
+                  <PublicRoute>
+                    <Login />
+                  </PublicRoute>
+                } 
+              />
+              <Route 
+                path="/login-metamask" 
                 element={
                   <PublicRoute>
                     <LoginMetaMask />
@@ -67,7 +78,7 @@ function App() {
                 path="/dashboard" 
                 element={
                   <ProtectedRoute>
-                    <ClientDashboard />
+                    <ClientWorkflow />
                   </ProtectedRoute>
                 } 
               />

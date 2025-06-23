@@ -29,7 +29,7 @@ const Login: React.FC = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isInitialized && isEmailAuthenticated) {
-      navigate('/workflow');
+      navigate('/dashboard');
     }
   }, [isInitialized, isEmailAuthenticated, navigate]);
 
