@@ -4,13 +4,21 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import LoginMetaMask from './pages/LoginMetaMask';
 import Dashboard from './pages/Dashboard';
+import ModularDashboard from './pages/ModularDashboard';
 import Settings from './pages/Settings';
 import { ChakraProvider } from '@chakra-ui/react';
+import { TestModeBanner } from './components/TestModeBanner';
+import { TEST_CONFIG } from './config/testMode';
 import './App.css';
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
   const { isAuthenticated, isEmailAuthenticated } = useAuth();
+
+  // Skip auth checks in test mode
+  if (TEST_CONFIG.skipAuthChecks) {
+    return children;
+  }
 
   // Allow access if either traditional auth or email auth is active
   if (!isAuthenticated && !isEmailAuthenticated) {
@@ -23,6 +31,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
 // Public route component (redirects to dashboard if already logged in)
 const PublicRoute = ({ children }: { children: React.ReactElement }) => {
   const { isAuthenticated, isEmailAuthenticated } = useAuth();
+
+  // Auto-redirect to dashboard in test mode
+  if (TEST_CONFIG.autoLogin) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   // Redirect if either traditional auth or email auth is active
   if (isAuthenticated || isEmailAuthenticated) {
@@ -70,7 +83,10 @@ function App() {
                 path="/dashboard" 
                 element={
                   <ProtectedRoute>
-                    <Dashboard />
+                    <>
+                      <TestModeBanner />
+                      <ModularDashboard />
+                    </>
                   </ProtectedRoute>
                 } 
               />

@@ -4,6 +4,7 @@ import web3StorageService from '../services/Web3StorageService';
 import type { ConnectionStatus } from '../services/Web3StorageService';
 // Removed messaging and payment services for simplified data room
 import MagicLinkAuthService, { type AuthUser } from '../services/MagicLinkAuthService';
+import { TEST_MODE, MOCK_USER, TEST_CONFIG } from '../config/testMode';
 
 interface AuthResult {
   success: boolean;
@@ -94,9 +95,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, []);
 
-  // Check for existing Magic Link session
+  // Check for existing Magic Link session or enable test mode
   useEffect(() => {
     const checkMagicSession = async () => {
+      // Enable test mode if configured
+      if (TEST_MODE) {
+        console.log('🧪 TEST MODE ENABLED - Using mock authentication');
+        setUser(MOCK_USER as AuthUser);
+        setIsEmailAuthenticated(true);
+        setIsWalletConnected(true);
+        setIsAuthenticated(true);
+        setIsInitialized(true);
+        setDid(MOCK_USER.did);
+        setWalletAddress(MOCK_USER.walletAddress);
+        return;
+      }
+
       try {
         const isLoggedIn = await magicAuthService.isLoggedIn();
         if (isLoggedIn) {
@@ -118,6 +132,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Attempt to restore session from localStorage if available
   useEffect(() => {
+    // Skip localStorage check in test mode
+    if (TEST_MODE) {
+      return;
+    }
+
     const storedDID = localStorage.getItem('cryptalk_did');
     const storedMCP = localStorage.getItem('cryptalk_use_mcp') === 'true';
     
