@@ -83,199 +83,277 @@ const Dashboard: React.FC = () => {
         </TabList>
 
         <TabPanels>
-          {/* OFF CHAIN SPACE TAB */}
+          {/* OFF CHAIN SPACE TAB - ON CHAIN STYLE DESIGN */}
           <TabPanel p={0}>
-            <VStack spacing={1} mb={6} align="start">
-              <Heading as="h2" size="xl" color="gray.800">
-                Data Room
-              </Heading>
-              <Text fontSize="md" color="gray.600">
-                Create NDAs, upload documents, and manage secure file sharing with AI-powered review
+            <VStack spacing={4} mb={8}>
+              <Heading size="lg">📁 Off Chain Features</Heading>
+              <Text color="gray.600" maxW="2xl" textAlign="center">
+                Create NDAs, upload documents, and manage secure file sharing with AI-powered review.
+                All operations are performed off-chain for fast and free document management.
               </Text>
+              
+              {/* Status Badges */}
+              <HStack spacing={3}>
+                <Badge colorScheme="blue" p={2}>
+                  📝 NDA Ready
+                </Badge>
+                <Badge colorScheme="green" p={2}>
+                  📁 Upload Ready
+                </Badge>
+                <Badge colorScheme="purple" p={2}>
+                  🤖 AI Ready
+                </Badge>
+              </HStack>
             </VStack>
 
-            <Tabs size="md" variant="enclosed" colorScheme="blue">
-              <TabList>
-                <Tab>📝 NDA Creation</Tab>
-                <Tab>📁 Document Upload</Tab>
-                <Tab>🤖 AI Review</Tab>
-              </TabList>
+            {/* Navigation Tabs */}
+            <HStack spacing={4} mb={6} justify="center">
+              <Button
+                leftIcon={<Text>📝</Text>}
+                colorScheme={selectedDocType === 'nda' ? 'blue' : 'gray'}
+                variant={selectedDocType === 'nda' ? 'solid' : 'outline'}
+                onClick={() => setSelectedDocType('nda')}
+              >
+                NDA Creation
+              </Button>
+              
+              <Button
+                leftIcon={<Text>📁</Text>}
+                colorScheme={selectedDocType === 'upload' ? 'green' : 'gray'}
+                variant={selectedDocType === 'upload' ? 'solid' : 'outline'}
+                onClick={() => setSelectedDocType('upload')}
+              >
+                Document Upload
+              </Button>
+              
+              <Button
+                leftIcon={<Text>🤖</Text>}
+                colorScheme={selectedDocType === 'ai' ? 'purple' : 'gray'}
+                variant={selectedDocType === 'ai' ? 'solid' : 'outline'}
+                onClick={() => setSelectedDocType('ai')}
+              >
+                AI Review
+              </Button>
+            </HStack>
 
-              <TabPanels>
-                {/* NDA Creation Tab */}
-                <TabPanel>
-                  <Grid templateColumns={{ base: "1fr", lg: "2fr 1fr" }} gap={8}>
-                    <GridItem>
-                      <Card bg={cardBg}>
-                        <CardHeader>
-                          <HStack>
-                            <Icon as={FiFileText} color="blue.500" boxSize={6} />
-                            <Heading size="lg">Create Custom NDA</Heading>
-                          </HStack>
-                        </CardHeader>
-                        <CardBody>
-                          <VStack spacing={4} align="stretch">
-                            <Text color="gray.600">
-                              Generate a customized Non-Disclosure Agreement using AI based on your specific requirements.
-                            </Text>
-                            <Button 
-                              colorScheme="blue" 
-                              size="lg"
-                              leftIcon={<FiFileText />}
-                              rightIcon={<FiChevronRight />}
-                            >
-                              Start NDA Creation
-                            </Button>
-                          </VStack>
-                        </CardBody>
-                      </Card>
-                    </GridItem>
-                    
-                    <GridItem>
-                      <Card bg={cardBg}>
-                        <CardHeader>
-                          <Heading size="md">Recent NDAs</Heading>
-                        </CardHeader>
-                        <CardBody>
-                          <VStack spacing={3} align="stretch">
-                            <Text fontSize="sm" color="gray.500">
-                              No NDAs created yet
-                            </Text>
-                          </VStack>
-                        </CardBody>
-                      </Card>
-                    </GridItem>
-                  </Grid>
-                </TabPanel>
+            {/* Content Sections */}
+            {(selectedDocType === 'nda' || selectedDocType === '') && (
+              <Card>
+                <CardHeader bg="blue.50">
+                  <Heading size="md">📝 NDA Creation</Heading>
+                </CardHeader>
+                <CardBody>
+                  <VStack spacing={6} align="stretch">
+                    <Alert status="info">
+                      <AlertIcon />
+                      <Box>
+                        <Text fontWeight="bold">AI-Powered NDA Generation</Text>
+                        <Text fontSize="sm">Create customized Non-Disclosure Agreements using advanced AI technology.</Text>
+                      </Box>
+                    </Alert>
 
-                {/* Document Upload Tab */}
-                <TabPanel>
-                  <Grid templateColumns={{ base: "1fr", lg: "1fr 1fr" }} gap={6}>
-                    <GridItem>
-                      <Card bg={cardBg}>
-                        <CardHeader>
-                          <HStack>
-                            <Icon as={FiUpload} color="green.500" boxSize={6} />
-                            <Heading size="lg">Upload Documents</Heading>
-                          </HStack>
-                        </CardHeader>
-                        <CardBody>
-                          <VStack spacing={4} align="stretch">
-                            <Text color="gray.600" mb={4}>
-                              Select document type and upload your files securely
-                            </Text>
-                            
-                            <Grid templateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap={3}>
-                              {documentTypes.map((type) => (
-                                <Button
-                                  key={type.id}
-                                  variant={selectedDocType === type.id ? 'solid' : 'outline'}
-                                  colorScheme={type.color}
-                                  leftIcon={<Icon as={type.icon} />}
-                                  onClick={() => setSelectedDocType(type.id)}
-                                  size="sm"
-                                >
-                                  {type.name}
-                                </Button>
-                              ))}
-                            </Grid>
-                            
-                            {selectedDocType && (
-                              <Button 
-                                colorScheme="green" 
-                                size="lg"
-                                leftIcon={<FiUpload />}
-                              >
-                                Upload Files
-                              </Button>
-                            )}
-                          </VStack>
-                        </CardBody>
-                      </Card>
-                    </GridItem>
-                    
-                    <GridItem>
-                      <Card bg={cardBg}>
-                        <CardHeader>
-                          <Heading size="md">Uploaded Documents</Heading>
-                        </CardHeader>
-                        <CardBody>
-                          <VStack spacing={3} align="stretch">
-                            <Text fontSize="sm" color="gray.500">
-                              No documents uploaded yet
-                            </Text>
-                          </VStack>
-                        </CardBody>
-                      </Card>
-                    </GridItem>
-                  </Grid>
-                </TabPanel>
+                    <VStack spacing={4} align="start">
+                      <Text fontWeight="bold">Why Use AI NDA Creation?</Text>
+                      <VStack spacing={2} align="start" pl={4}>
+                        <Text fontSize="sm">• 🤖 Tailored to your specific requirements</Text>
+                        <Text fontSize="sm">• ⚡ Generated in seconds, not hours</Text>
+                        <Text fontSize="sm">• 📋 Legally compliant templates</Text>
+                        <Text fontSize="sm">• ✏️ Fully customizable and editable</Text>
+                      </VStack>
+                    </VStack>
 
-                {/* AI Review Tab */}
-                <TabPanel>
-                  <Grid templateColumns={{ base: "1fr", lg: "2fr 1fr" }} gap={8}>
-                    <GridItem>
-                      <Card bg={cardBg}>
-                        <CardHeader>
-                          <HStack>
-                            <Icon as={FiUsers} color="purple.500" boxSize={6} />
-                            <Heading size="lg">AI Agent Review</Heading>
-                          </HStack>
-                        </CardHeader>
-                        <CardBody>
-                          <VStack spacing={4} align="stretch">
-                            <Text color="gray.600">
-                              Select AI personas to review your documents based on expertise areas
-                            </Text>
-                            
-                            <Stack spacing={3}>
-                              <HStack justify="space-between" p={3} border="1px" borderColor="gray.200" borderRadius="md">
-                                <VStack align="start" spacing={1}>
-                                  <Text fontWeight="semibold">Financial Analyst</Text>
-                                  <Text fontSize="sm" color="gray.600">Reviews financial projections and cap tables</Text>
-                                </VStack>
-                                <Badge colorScheme="blue">Available</Badge>
-                              </HStack>
-                              
-                              <HStack justify="space-between" p={3} border="1px" borderColor="gray.200" borderRadius="md">
-                                <VStack align="start" spacing={1}>
-                                  <Text fontWeight="semibold">Legal Expert</Text>
-                                  <Text fontSize="sm" color="gray.600">Reviews patents and legal documents</Text>
-                                </VStack>
-                                <Badge colorScheme="green">Available</Badge>
-                              </HStack>
-                              
-                              <HStack justify="space-between" p={3} border="1px" borderColor="gray.200" borderRadius="md">
-                                <VStack align="start" spacing={1}>
-                                  <Text fontWeight="semibold">Business Strategist</Text>
-                                  <Text fontSize="sm" color="gray.600">Reviews pitch decks and business plans</Text>
-                                </VStack>
-                                <Badge colorScheme="purple">Available</Badge>
-                              </HStack>
-                            </Stack>
-                          </VStack>
-                        </CardBody>
-                      </Card>
-                    </GridItem>
+                    <Button
+                      colorScheme="blue"
+                      size="lg"
+                      leftIcon={<Text>📝</Text>}
+                    >
+                      Start NDA Creation
+                    </Button>
+
+                    <Divider />
                     
-                    <GridItem>
-                      <Card bg={cardBg}>
-                        <CardHeader>
-                          <Heading size="md">Review Results</Heading>
-                        </CardHeader>
-                        <CardBody>
-                          <VStack spacing={3} align="stretch">
-                            <Text fontSize="sm" color="gray.500">
-                              No reviews completed yet
-                            </Text>
-                          </VStack>
-                        </CardBody>
-                      </Card>
-                    </GridItem>
-                  </Grid>
-                </TabPanel>
-              </TabPanels>
-            </Tabs>
+                    {/* Recent NDAs placeholder */}
+                    <VStack spacing={4} align="stretch" p={6} bg="blue.50" borderRadius="md">
+                      <Text fontWeight="bold" color="blue.700">📄 Recent NDAs</Text>
+                      <Text color="blue.600">
+                        Your recently created NDAs will appear here for quick access and reuse.
+                      </Text>
+                      <Text fontSize="sm" color="gray.500">
+                        No NDAs created yet
+                      </Text>
+                    </VStack>
+                  </VStack>
+                </CardBody>
+              </Card>
+            )}
+
+            {selectedDocType === 'upload' && (
+              <Card>
+                <CardHeader bg="green.50">
+                  <Heading size="md">📁 Document Upload</Heading>
+                </CardHeader>
+                <CardBody>
+                  <VStack spacing={4} align="stretch">
+                    <Alert status="success">
+                      <AlertIcon />
+                      <Text>Securely upload your documents for safe storage and AI analysis.</Text>
+                    </Alert>
+                    
+                    <VStack spacing={4} align="start">
+                      <Text fontWeight="bold">Select Document Type:</Text>
+                      <Grid templateColumns="repeat(auto-fit, minmax(180px, 1fr))" gap={3} w="full">
+                        <Button
+                          variant="outline"
+                          colorScheme="blue"
+                          leftIcon={<Icon as={FiFileText} />}
+                          size="md"
+                          p={4}
+                          h="auto"
+                          flexDir="column"
+                          spacing={2}
+                        >
+                          <Text fontWeight="bold">Pitch Deck</Text>
+                          <Text fontSize="xs" color="gray.600">Business presentations</Text>
+                        </Button>
+                        
+                        <Button
+                          variant="outline"
+                          colorScheme="green"
+                          leftIcon={<Icon as={FiFileText} />}
+                          size="md"
+                          p={4}
+                          h="auto"
+                          flexDir="column"
+                          spacing={2}
+                        >
+                          <Text fontWeight="bold">Financial</Text>
+                          <Text fontSize="xs" color="gray.600">Projections & reports</Text>
+                        </Button>
+                        
+                        <Button
+                          variant="outline"
+                          colorScheme="purple"
+                          leftIcon={<Icon as={FiShield} />}
+                          size="md"
+                          p={4}
+                          h="auto"
+                          flexDir="column"
+                          spacing={2}
+                        >
+                          <Text fontWeight="bold">Patents</Text>
+                          <Text fontSize="xs" color="gray.600">IP documentation</Text>
+                        </Button>
+                        
+                        <Button
+                          variant="outline"
+                          colorScheme="orange"
+                          leftIcon={<Icon as={FiUsers} />}
+                          size="md"
+                          p={4}
+                          h="auto"
+                          flexDir="column"
+                          spacing={2}
+                        >
+                          <Text fontWeight="bold">Cap Table</Text>
+                          <Text fontSize="xs" color="gray.600">Equity structure</Text>
+                        </Button>
+                      </Grid>
+                    </VStack>
+                    
+                    <Button colorScheme="green" size="lg" leftIcon={<FiUpload />}>
+                      Upload Documents
+                    </Button>
+                    
+                    {/* Uploaded documents placeholder */}
+                    <VStack spacing={4} align="stretch" p={6} bg="green.50" borderRadius="md">
+                      <Text fontWeight="bold" color="green.700">📂 Document Library</Text>
+                      <Text color="green.600">
+                        Your uploaded documents will be organized here by type and ready for AI review.
+                      </Text>
+                      <Text fontSize="sm" color="gray.500">
+                        No documents uploaded yet
+                      </Text>
+                    </VStack>
+                  </VStack>
+                </CardBody>
+              </Card>
+            )}
+
+            {selectedDocType === 'ai' && (
+              <Card>
+                <CardHeader bg="purple.50">
+                  <Heading size="md">🤖 AI Agent Review</Heading>
+                </CardHeader>
+                <CardBody>
+                  <VStack spacing={4} align="stretch">
+                    <Alert status="info">
+                      <AlertIcon />
+                      <Box>
+                        <Text fontWeight="bold">Expert AI Analysis</Text>
+                        <Text fontSize="sm">
+                          Select specialized AI agents to review your documents with domain expertise.
+                        </Text>
+                      </Box>
+                    </Alert>
+                    
+                    <Badge colorScheme="purple" alignSelf="start">
+                      🎯 Specialized Expertise • 📊 Detailed Analysis • ⚡ Instant Results
+                    </Badge>
+                    
+                    {/* AI Agents */}
+                    <VStack spacing={3} align="stretch">
+                      <HStack justify="space-between" p={4} border="2px" borderColor="blue.200" borderRadius="md" bg="blue.50">
+                        <VStack align="start" spacing={1}>
+                          <HStack>
+                            <Text>💼</Text>
+                            <Text fontWeight="bold">Financial Analyst</Text>
+                          </HStack>
+                          <Text fontSize="sm" color="gray.600">Reviews financial projections, cap tables, and revenue models</Text>
+                        </VStack>
+                        <Badge colorScheme="blue">Available</Badge>
+                      </HStack>
+                      
+                      <HStack justify="space-between" p={4} border="2px" borderColor="green.200" borderRadius="md" bg="green.50">
+                        <VStack align="start" spacing={1}>
+                          <HStack>
+                            <Text>⚖️</Text>
+                            <Text fontWeight="bold">Legal Expert</Text>
+                          </HStack>
+                          <Text fontSize="sm" color="gray.600">Analyzes patents, contracts, and legal compliance</Text>
+                        </VStack>
+                        <Badge colorScheme="green">Available</Badge>
+                      </HStack>
+                      
+                      <HStack justify="space-between" p={4} border="2px" borderColor="purple.200" borderRadius="md" bg="purple.50">
+                        <VStack align="start" spacing={1}>
+                          <HStack>
+                            <Text>🚀</Text>
+                            <Text fontWeight="bold">Business Strategist</Text>
+                          </HStack>
+                          <Text fontSize="sm" color="gray.600">Evaluates pitch decks, business models, and market analysis</Text>
+                        </VStack>
+                        <Badge colorScheme="purple">Available</Badge>
+                      </HStack>
+                    </VStack>
+                    
+                    <Button colorScheme="purple" size="lg" leftIcon={<Text>🤖</Text>}>
+                      Start AI Review
+                    </Button>
+                    
+                    {/* Review results placeholder */}
+                    <VStack spacing={4} align="stretch" p={6} bg="purple.50" borderRadius="md">
+                      <Text fontWeight="bold" color="purple.700">📋 Review Results</Text>
+                      <Text color="purple.600">
+                        Detailed AI analysis reports will appear here with insights, recommendations, and scoring.
+                      </Text>
+                      <Text fontSize="sm" color="gray.500">
+                        No reviews completed yet
+                      </Text>
+                    </VStack>
+                  </VStack>
+                </CardBody>
+              </Card>
+            )}
           </TabPanel>
 
           {/* ON CHAIN SPACE TAB - ORIGINAL FUNCTIONALITY */}
