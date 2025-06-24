@@ -15,7 +15,12 @@ import {
   FormLabel,
   Divider,
   Flex,
-  HStack
+  HStack,
+  Card,
+  CardBody,
+  CardHeader,
+  Grid,
+  Badge
 } from '@chakra-ui/react';
 import { useAuth } from '../contexts/AuthContext';
 import AppConfig from '../config/AppConfig';
@@ -146,56 +151,58 @@ const Login: React.FC = () => {
   };
 
   return (
-    <Container maxW="md" py={12}>
-      <VStack spacing={8} align="stretch">
-        <VStack spacing={3} textAlign="center">
-          <Heading>Welcome to CrypTalk</Heading>
-          <Text color="gray.600">
-            Secure messaging for {AppConfig.serviceProvider.name}
-          </Text>
-        </VStack>
+    <Box maxW="1200px" mx="auto" p={6} bg="gray.50" minH="calc(100vh - 64px)">
+      {/* Header */}
+      <VStack spacing={4} mb={8} textAlign="center">
+        <Heading size="2xl" color="gray.800">
+          Welcome to CrypTalk Platform
+        </Heading>
+        <Text fontSize="lg" color="gray.600" maxW="2xl">
+          Choose your preferred authentication method to access secure document sharing and blockchain features
+        </Text>
+      </VStack>
 
-        <Box p={6} borderWidth={1} borderRadius="lg" bg="white" boxShadow="sm">
-          <VStack spacing={6}>
-            <Box textAlign="center" w="full">
-              <Heading size="md" mb={2}>Sign in with Email</Heading>
-              <Text fontSize="sm" color="gray.600">
-                Enter your email address and we'll send you a magic link to sign in.
-              </Text>
-            </Box>
-            
-            <Flex direction="column" align="center" justify="center" w="full">
-              <Box p={4} borderRadius="full" bg="blue.50" mb={4}>
-                <Text fontSize="2xl">✉️</Text>
-              </Box>
-            </Flex>
+      {/* Main Authentication Options */}
+      <Grid templateColumns={{ base: "1fr", lg: "1fr 1fr" }} gap={8} mb={8}>
+        {/* Email Authentication Card */}
+        <Card>
+          <CardHeader bg="blue.50">
+            <VStack spacing={2}>
+              <Text fontSize="3xl">📧</Text>
+              <Heading size="md">Email Authentication</Heading>
+            </VStack>
+          </CardHeader>
+          <CardBody>
+            <VStack spacing={6} align="stretch">
+              <Alert status="info">
+                <AlertIcon />
+                <Box>
+                  <Text fontWeight="bold">Magic Link Login</Text>
+                  <Text fontSize="sm">Secure, passwordless authentication via email</Text>
+                </Box>
+              </Alert>
 
-            <VStack spacing={4} w="full">
-              {/* MetaMask Connect Button */}
-              <Button
-                onClick={handleMetaMaskConnect}
-                colorScheme="orange"
-                size="lg"
-                width="full"
-                isLoading={isMetaMaskLoading}
-                loadingText="Connecting MetaMask..."
-                leftIcon={<Text>🦊</Text>}
-              >
-                Connect with MetaMask
-              </Button>
-
-              <Divider />
+              <VStack spacing={4} align="start">
+                <Text fontWeight="bold">Why Use Email Login?</Text>
+                <VStack spacing={2} align="start" pl={4}>
+                  <Text fontSize="sm">• 🔒 No passwords to remember</Text>
+                  <Text fontSize="sm">• ⚡ Instant access via magic link</Text>
+                  <Text fontSize="sm">• 📁 Full access to Off Chain features</Text>
+                  <Text fontSize="sm">• 🔗 Can connect wallet later for On Chain features</Text>
+                </VStack>
+              </VStack>
 
               <form onSubmit={handleEmailLogin} style={{ width: '100%' }}>
                 <VStack spacing={4} w="full">
                   <FormControl isRequired>
-                    <FormLabel>Email Address</FormLabel>
+                    <FormLabel fontWeight="bold">Email Address</FormLabel>
                     <Input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="Enter your email address"
                       size="lg"
+                      bg="white"
                     />
                   </FormControl>
 
@@ -206,36 +213,146 @@ const Login: React.FC = () => {
                     width="full"
                     isLoading={isLoading}
                     loadingText="Sending magic link..."
+                    leftIcon={<Text>📧</Text>}
                   >
                     Send Magic Link
                   </Button>
                 </VStack>
               </form>
+
+              <Divider />
+              
+              {/* Email authentication status */}
+              <VStack spacing={4} align="stretch" p={4} bg="blue.50" borderRadius="md">
+                <Text fontWeight="bold" color="blue.700">📱 How It Works</Text>
+                <Text color="blue.600" fontSize="sm">
+                  1. Enter your email address above<br/>
+                  2. Check your inbox for the magic link<br/>
+                  3. Click the link to instantly sign in<br/>
+                  4. Access your secure data room
+                </Text>
+              </VStack>
             </VStack>
-          </VStack>
-        </Box>
-        
-        <Divider />
-        
-        <VStack spacing={2}>
-          <Text textAlign="center" fontSize="sm" color="gray.500">
-            Need wallet features for secure payments?
-          </Text>
-          <Button
-            variant="link"
-            colorScheme="blue"
-            size="sm"
-            onClick={() => navigate('/login-metamask')}
-          >
-            Login with MetaMask instead
-          </Button>
-        </VStack>
-        
-        <Text textAlign="center" fontSize="sm" color="gray.500">
-          © {new Date().getFullYear()} {AppConfig.serviceProvider.name}. All rights reserved.
-        </Text>
-      </VStack>
-    </Container>
+          </CardBody>
+        </Card>
+
+        {/* Wallet Authentication Card */}
+        <Card>
+          <CardHeader bg="orange.50">
+            <VStack spacing={2}>
+              <Text fontSize="3xl">🦊</Text>
+              <Heading size="md">Wallet Authentication</Heading>
+            </VStack>
+          </CardHeader>
+          <CardBody>
+            <VStack spacing={6} align="stretch">
+              <Alert status="warning">
+                <AlertIcon />
+                <Box>
+                  <Text fontWeight="bold">MetaMask Required</Text>
+                  <Text fontSize="sm">Connect your wallet for blockchain features</Text>
+                </Box>
+              </Alert>
+
+              <VStack spacing={4} align="start">
+                <Text fontWeight="bold">Why Use Wallet Login?</Text>
+                <VStack spacing={2} align="start" pl={4}>
+                  <Text fontSize="sm">• 🔗 Direct blockchain access</Text>
+                  <Text fontSize="sm">• 💰 Cryptocurrency payments</Text>
+                  <Text fontSize="sm">• ⏰ Timestamped secure chat</Text>
+                  <Text fontSize="sm">• 🔐 Ultimate security & privacy</Text>
+                </VStack>
+              </VStack>
+
+              <Button
+                onClick={handleMetaMaskConnect}
+                colorScheme="orange"
+                size="lg"
+                width="full"
+                isLoading={isMetaMaskLoading}
+                loadingText="Connecting MetaMask..."
+                leftIcon={<Text>🦊</Text>}
+              >
+                Connect MetaMask Wallet
+              </Button>
+
+              <Divider />
+              
+              {/* Wallet authentication info */}
+              <VStack spacing={4} align="stretch" p={4} bg="orange.50" borderRadius="md">
+                <Text fontWeight="bold" color="orange.700">⚡ Instant Access</Text>
+                <Text color="orange.600" fontSize="sm">
+                  • Connect your MetaMask wallet<br/>
+                  • Sign the authentication message<br/>
+                  • Access all platform features<br/>
+                  • Use blockchain capabilities
+                </Text>
+              </VStack>
+
+              {!window.ethereum && (
+                <Alert status="error" size="sm">
+                  <AlertIcon />
+                  <VStack align="start" spacing={1} w="full">
+                    <Text fontSize="sm" fontWeight="bold">MetaMask Not Detected</Text>
+                    <Text fontSize="xs">
+                      Please install MetaMask extension to use wallet authentication
+                    </Text>
+                  </VStack>
+                </Alert>
+              )}
+            </VStack>
+          </CardBody>
+        </Card>
+      </Grid>
+
+      {/* Feature Comparison */}
+      <Card>
+        <CardHeader bg="gray.50">
+          <Heading size="md" textAlign="center">🔍 Choose Your Authentication Method</Heading>
+        </CardHeader>
+        <CardBody>
+          <Grid templateColumns={{ base: "1fr", md: "1fr 1fr 1fr" }} gap={6}>
+            <VStack spacing={3}>
+              <Text fontWeight="bold" color="blue.600">📧 Email Login</Text>
+              <Badge colorScheme="blue">Recommended for Most Users</Badge>
+              <VStack spacing={1} fontSize="sm">
+                <Text>✅ Off Chain Data Room</Text>
+                <Text>✅ NDA Creation & AI Review</Text>
+                <Text>✅ Document Upload & Management</Text>
+                <Text>🔗 Connect wallet later for payments</Text>
+              </VStack>
+            </VStack>
+
+            <VStack spacing={3}>
+              <Text fontWeight="bold" color="orange.600">🦊 Wallet Login</Text>
+              <Badge colorScheme="orange">For Blockchain Features</Badge>
+              <VStack spacing={1} fontSize="sm">
+                <Text>✅ All Email Login Features</Text>
+                <Text>✅ Cryptocurrency Payments</Text>
+                <Text>✅ Timestamped Secure Chat</Text>
+                <Text>✅ Blockchain Verification</Text>
+              </VStack>
+            </VStack>
+
+            <VStack spacing={3}>
+              <Text fontWeight="bold" color="purple.600">🔗 Hybrid Approach</Text>
+              <Badge colorScheme="purple">Maximum Flexibility</Badge>
+              <VStack spacing={1} fontSize="sm">
+                <Text>1. Start with Email Login</Text>
+                <Text>2. Explore Off Chain features</Text>
+                <Text>3. Connect wallet when needed</Text>
+                <Text>4. Access all capabilities</Text>
+              </VStack>
+            </VStack>
+          </Grid>
+        </CardBody>
+      </Card>
+
+      {/* Footer */}
+      <Text textAlign="center" fontSize="sm" color="gray.500" mt={8}>
+        © {new Date().getFullYear()} {AppConfig.serviceProvider.name}. All rights reserved.
+      </Text>
+    </Box>
   );
 };
 
