@@ -57,12 +57,6 @@ const Dashboard: React.FC = () => {
   });
 
   const handleOnChainSectionChange = (section: 'wallet' | 'payment' | 'chat') => {
-    if (section !== 'wallet' && !isWalletConnected) {
-      requireWalletConnection(() => {
-        setActiveOnChainSection(section);
-      });
-      return;
-    }
     setActiveOnChainSection(section);
   };
 
@@ -328,7 +322,6 @@ const Dashboard: React.FC = () => {
                 colorScheme={activeOnChainSection === 'payment' ? 'blue' : 'gray'}
                 variant={activeOnChainSection === 'payment' ? 'solid' : 'outline'}
                 onClick={() => handleOnChainSectionChange('payment')}
-                isDisabled={!isWalletConnected}
               >
                 Payments
               </Button>
@@ -338,7 +331,6 @@ const Dashboard: React.FC = () => {
                 colorScheme={activeOnChainSection === 'chat' ? 'purple' : 'gray'}
                 variant={activeOnChainSection === 'chat' ? 'solid' : 'outline'}
                 onClick={() => handleOnChainSectionChange('chat')}
-                isDisabled={!isWalletConnected}
               >
                 Timestamped Chat
               </Button>
@@ -408,7 +400,7 @@ const Dashboard: React.FC = () => {
               </Card>
             )}
 
-            {activeOnChainSection === 'payment' && isWalletConnected && (
+            {activeOnChainSection === 'payment' && (
               <Card>
                 <CardHeader bg="blue.50">
                   <Heading size="md">💰 Secure Payments</Heading>
@@ -436,7 +428,7 @@ const Dashboard: React.FC = () => {
               </Card>
             )}
 
-            {activeOnChainSection === 'chat' && isWalletConnected && (
+            {activeOnChainSection === 'chat' && (
               <Card>
                 <CardHeader bg="purple.50">
                   <Heading size="md">⏰ Timestamped Secure Chat</Heading>
