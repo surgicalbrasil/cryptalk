@@ -36,14 +36,9 @@ export class StorachaProvider implements IStorageProvider {
   private client: any = null;
 
   async initialize() {
-    try {
-      const Client = await import('@web3-storage/w3up-client');
-      this.client = await Client.create();
-      console.log('Storacha client ready');
-    } catch (error) {
-      console.warn('Storacha SDK not available, using fallback');
-      this.client = this.createFallbackClient();
-    }
+    // For now, always use fallback until @web3-storage/w3up-client is properly configured
+    console.warn('Storacha SDK not available, using fallback');
+    this.client = this.createFallbackClient();
   }
 
   async upload(file: File | Blob, options?: UploadOptions): Promise<StorageFile> {
@@ -90,7 +85,7 @@ export class StorachaProvider implements IStorageProvider {
     };
   }
 
-  async list(limit = 10): Promise<StorageFile[]> {
+  async list(): Promise<StorageFile[]> {
     return []; // Would query Storacha API
   }
 
@@ -111,7 +106,7 @@ export class StorachaProvider implements IStorageProvider {
 
   private createFallbackClient() {
     return {
-      uploadFile: async (file: File) => `bafybei${Math.random().toString(36).substring(2, 15)}`
+      uploadFile: async () => `bafybei${Math.random().toString(36).substring(2, 15)}`
     };
   }
 }

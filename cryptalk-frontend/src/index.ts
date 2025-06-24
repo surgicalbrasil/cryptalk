@@ -1,19 +1,16 @@
-// 🎯 Ultra-Simple CrypTalk System
+// 🎯 CrypTalk - Ultra-Modular Web3 Communication Platform
+// Clean 5-file architecture demo
 
-// Legacy Shared Components (keeping for compatibility)
-export * from './legacy/shared/types';
-export * from './legacy/shared/components';
-export * from './legacy/shared/hooks/useAuth';
-export * from './legacy/shared/utils';
-export * from './legacy/features';
-
-// New Modular System
+// Core System
+import { CrypTalk } from './system';
 export { CrypTalk, EventBus, Services, Config } from './system';
+
+// Modules
 export { StorageModule } from './modules/storage';
 export { ChatModule } from './modules/chat';
 export { PaymentModule } from './modules/payments';
 
-// Type exports for convenience
+// Type exports
 export type { 
   StorageFile, 
   UploadOptions, 
@@ -34,11 +31,11 @@ export type {
   IPaymentProvider 
 } from './modules/payments';
 
-// Main CrypTalk class - Ultra-Simple Usage
-export default class {
+// 🚀 Main CrypTalk Class - Ultra-Simple API
+class CrypTalkMain {
   private static system = CrypTalk.getInstance();
 
-  // 🚀 Initialize the entire system
+  // Initialize the entire system
   static async initialize() {
     const system = this.system;
     
@@ -54,27 +51,23 @@ export default class {
     if (result.success) {
       console.log('🎉 CrypTalk ready!', result.modules);
     } else {
-      console.error('❌ CrypTalk failed:', result.errors);
+      console.error('❌ CrypTalk failed:', 'errors' in result ? result.errors : 'Unknown error');
     }
     
     return result;
   }
 
-  // 💾 Storage API
+  // Module APIs
   static get storage() { return this.system.storage; }
-  
-  // 💬 Chat API  
   static get chat() { return this.system.chat; }
-  
-  // 💰 Payments API
   static get payments() { return this.system.payments; }
-  
-  // 📡 Events API
   static get events() { return this.system.eventBus; }
   
-  // 🏥 Health Check
+  // Health Check
   static async getHealth() { return await this.system.getHealth(); }
   
-  // 🔄 Destroy
+  // Destroy
   static async destroy() { await this.system.destroy(); }
 }
+
+export default CrypTalkMain;

@@ -55,19 +55,9 @@ export class CrypTalkProvider implements IChatProvider {
   private subscribers = new Map<string, Set<(message: ChatMessage) => void>>();
 
   async initialize() {
-    try {
-      // Try to initialize real CrypTalk SDK
-      const { RWAMarketplaceSDK } = await import('@cryptalk/browser');
-      
-      // Initialize wallet connection
-      const walletClient = await this.initializeWallet();
-      this.client = await RWAMarketplaceSDK.connect(walletClient);
-      
-      console.log('CrypTalk SDK ready');
-    } catch (error) {
-      console.warn('CrypTalk SDK not available, using fallback');
-      this.client = this.createFallbackClient();
-    }
+    // For now, always use fallback until @cryptalk/browser is available
+    console.warn('CrypTalk SDK not available, using fallback');
+    this.client = this.createFallbackClient();
   }
 
   async sendMessage(roomId: string, content: string, options?: SendOptions): Promise<ChatMessage> {
@@ -165,13 +155,13 @@ export class CrypTalkProvider implements IChatProvider {
     } catch { return false; }
   }
 
-  private async initializeWallet() {
-    if (typeof window !== 'undefined' && (window as any).ethereum) {
-      await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
-      return (window as any).ethereum;
-    }
-    throw new Error('No wallet found');
-  }
+  // private async initializeWallet() {
+  //   if (typeof window !== 'undefined' && (window as any).ethereum) {
+  //     await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
+  //     return (window as any).ethereum;
+  //   }
+  //   throw new Error('No wallet found');
+  // }
 
   private notifySubscribers(roomId: string, message: ChatMessage) {
     this.subscribers.get(roomId)?.forEach(callback => {
@@ -276,7 +266,7 @@ export class MockChatProvider implements IChatProvider {
     return Array.from(this.rooms.values());
   }
 
-  async timestampMessage(messageId: string): Promise<boolean> {
+  async timestampMessage(_messageId: string): Promise<boolean> {
     await this.delay(500);
     return Math.random() > 0.1; // 90% success rate
   }
