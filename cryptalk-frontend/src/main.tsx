@@ -1,7 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import App from './App.tsx'
+import App from './App.tsx'  // Beautiful full app with login/dashboard
+// import App from './app/App.tsx'  // Simple modular demo
 // import App from './App.simple.tsx' // Using simplified version
 import ErrorBoundary from './components/ErrorBoundary'
 
