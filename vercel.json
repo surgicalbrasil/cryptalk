@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "cryptalk-frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "cryptalk-frontend/dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/cryptalk-frontend/dist/$1"
+    }
+  ]
+}
