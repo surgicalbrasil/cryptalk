@@ -42,9 +42,8 @@ const Header: React.FC = () => {
 
   return (
     <Box bg={bgColor} px={4} boxShadow="sm" borderBottom="1px" borderColor={borderColor}>
-      <Flex h={16} alignItems="center" justifyContent="space-between">
-        {/* Logo */}
-        <VStack spacing={0} align="start">
+      <Flex h={16} alignItems="center" justifyContent="center">
+        <VStack spacing={0} align="center">
           <HStack spacing={2}>
             <Box 
               fontWeight="bold" 
@@ -61,46 +60,32 @@ const Header: React.FC = () => {
           </Text>
         </VStack>
         
-        {/* Navigation removed - now handled by main dashboard tabs */}
-
-        {/* Right side actions */}
-        <HStack spacing={2}>
-          {isAuthenticated ? (
-            <>
-              {/* Settings Menu */}
-              <Menu>
-                <MenuButton
-                  as={IconButton}
-                  icon={<SettingsIcon />}
-                  variant="ghost"
-                  size="sm"
-                  aria-label="Settings"
-                />
-                <MenuList>
-                  <MenuItem onClick={() => navigate('/dashboard')}>
-                    🏠 Plataforma
-                  </MenuItem>
-                  <MenuItem onClick={() => navigate('/settings')}>
-                    ⚙️ Configurações
-                  </MenuItem>
-                  <MenuDivider />
-                  <MenuItem onClick={handleLogout} icon={<FiLogOut />} color="red.500">
-                    Sair
-                  </MenuItem>
-                </MenuList>
-              </Menu>
-
-              {/* Mobile navigation removed - handled by dashboard tabs */}
-            </>
-          ) : (
-            // Only show login button if not already on login page
-            location.pathname !== '/login' && location.pathname !== '/login-metamask' && (
-              <Button colorScheme="blue" onClick={() => navigate('/login')} size="sm">
-                Login
-              </Button>
-            )
-          )}
-        </HStack>
+        {/* Right side actions - only show when authenticated */}
+        {isAuthenticated && (
+          <Box position="absolute" right={4}>
+            <Menu>
+              <MenuButton
+                as={IconButton}
+                icon={<SettingsIcon />}
+                variant="ghost"
+                size="sm"
+                aria-label="Settings"
+              />
+              <MenuList>
+                <MenuItem onClick={() => navigate('/dashboard')}>
+                  🏠 Plataforma
+                </MenuItem>
+                <MenuItem onClick={() => navigate('/settings')}>
+                  ⚙️ Configurações
+                </MenuItem>
+                <MenuDivider />
+                <MenuItem onClick={handleLogout} icon={<FiLogOut />} color="red.500">
+                  Sair
+                </MenuItem>
+              </MenuList>
+            </Menu>
+          </Box>
+        )}
       </Flex>
     </Box>
   );
