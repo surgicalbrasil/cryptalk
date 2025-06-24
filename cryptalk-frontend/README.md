@@ -1,15 +1,8 @@
-# CrypTalk Frontend
+# CrypTalk Platform
 
-A dual-authentication decentralized messaging platform that combines user-friendly email login with blockchain security. Features Magic Link authentication for easy access and MetaMask integration for advanced Web3 features, including encrypted file storage, timestamped messaging, and cryptocurrency payments.
+A modern, streamlined data room solution that combines off-chain document management with on-chain security features. Features dual authentication (email/wallet), AI-powered document review, and secure blockchain integration for confidential file sharing.
 
-## Getting Started
-
-### Prerequisites
-
-- Node.js v16 or higher
-- npm (comes with Node.js)
-- Email address for Magic Link authentication
-- MetaMask wallet (optional, for blockchain features)
+## 🚀 Quick Start
 
 ### Installation
 
@@ -20,244 +13,280 @@ cd cryptalk/cryptalk-frontend
 
 # Install dependencies
 npm install
-```
 
-### Running the Application
-
-#### Using the Provided Scripts
-
-For Windows users, we provide two options:
-
-1. **Using the Batch file**:
-   - Double-click the `start-cryptalk-dev.bat` file in the root directory
-
-2. **Using PowerShell**:
-   - Right-click the `Start-CrypTalk.ps1` file 
-   - Select "Run with PowerShell"
-
-#### Manual Start
-
-```bash
-# Navigate to the frontend directory
-cd cryptalk-frontend
-
-# Start the development server
+# Start development server
 npm run dev
 ```
 
-The application will be available at http://localhost:5173/ (or another port if 5173 is in use).
+The application will be available at http://localhost:5173/
 
-### Authentication Options
+### Windows Quick Start Scripts
 
-CrypTalk now offers dual authentication methods:
+For Windows users:
+- **Batch file**: Double-click `start-cryptalk-dev.bat`
+- **PowerShell**: Right-click `Start-CrypTalk.ps1` → "Run with PowerShell"
 
-#### 1. Email Authentication (Recommended for new users)
-- Simply enter your email address
-- Receive a Magic Link in your email
-- Click the link to access the platform immediately
-- No wallet or crypto knowledge required
+## 🎯 Platform Overview
 
-#### 2. MetaMask Authentication (For blockchain features)
-- Connect your MetaMask wallet
-- Required for on-chain features:
-  - Encrypted file storage
-  - Timestamped messages
-  - Cryptocurrency payments
-  - Blockchain records
+CrypTalk Platform is designed as a comprehensive data room solution with two main spaces:
 
-## Features
+### 📁 Off Chain Space
+**Fast, free document management**
+- AI-powered NDA creation
+- Secure document upload (Pitch Decks, Financial Projections, Patents, Cap Tables)
+- AI expert review (Financial Analyst, Legal Expert, Business Strategist)
+- Email authentication for easy access
 
-### 🔐 Authentication & Access
-- **Dual Authentication System**: Email login for easy access, wallet for blockchain features
-- **Magic Link Integration**: User-friendly email authentication
-- **Progressive Enhancement**: Basic features with email, advanced features with wallet
-- **Seamless Wallet Connection**: Connect MetaMask when needed for on-chain features
+### ⛓️ On Chain Space  
+**Blockchain-secured features**
+- MetaMask wallet connection
+- Cryptocurrency payments
+- Timestamped secure chat with immutable records
+- Blockchain verification for legal compliance
 
-### 💬 Messaging
-- **Off-Chain Chat**: Free messaging with email authentication
-- **On-Chain Chat**: Blockchain-timestamped messages for legal compliance
-- **End-to-End Encryption**: All messages encrypted for privacy
-- **CrypTalk Protocol**: Compatible with CrypTalk SDK for on-chain features
+## 🔐 Authentication System
 
-### 📁 File Storage
-- **Encrypted File Upload**: AES-256-CBC encryption before storage
-- **IPFS/Web3.Storage**: Decentralized file storage
-- **Company-Only Decryption**: Only Surgical Brasil can decrypt files
-- **Dynamic Key Generation**: Unique encryption keys for each file
+### Dual Authentication Options
 
-### 💰 Payments & Blockchain
-- **Cryptocurrency Payments**: Send payments via connected wallet
-- **Transaction Records**: Blockchain-verified payment history
-- **Polygon Network**: Using Mumbai testnet for low-cost transactions
-- **Smart Contract Integration**: For secure payment processing
+#### 📧 Email Authentication (Recommended)
+- **Magic Link login** - passwordless, secure
+- **Instant access** to Off Chain features
+- **No wallet required** to get started
+- **Connect wallet later** for On Chain features
 
-### 🎯 User Experience
-- **On Chain Dashboard**: Dedicated section for blockchain features
-- **User Profile**: View authentication status and feature access
-- **Responsive Design**: Works on desktop and mobile
-- **Progressive Disclosure**: Features appear as capabilities unlock
+#### 🦊 Wallet Authentication  
+- **MetaMask integration** for direct blockchain access
+- **Full platform access** including payments and timestamped chat
+- **Blockchain identity** for maximum security
 
-## Project Structure
+### Simplified Login Experience
+- **Side-by-side authentication** cards
+- **Clear feature explanations** for each method
+- **Clean, minimal interface** without information overload
+- **Progressive enhancement** - start simple, add features as needed
 
-- `src/components/`: UI components
-- `src/contexts/`: React contexts for state management
-- `src/pages/`: Application pages/routes
-- `src/services/`: Core application services
-- `src/utils/`: Utility functions and helpers
+## 🏗️ Platform Architecture
 
-## Key Services
-
-### Authentication Services
-
-#### MagicLinkAuthService
-Manages email-based authentication flow.
-- Sends Magic Link emails for passwordless login
-- Manages user sessions with email authentication
-- Links email accounts to wallet addresses
-- Handles wallet connection state
-
-#### AuthContext
-Unified authentication state management.
-- Supports dual authentication (email + wallet)
-- Manages user session persistence
-- Handles authentication transitions
-- Provides authentication status to components
-
-### Storage & Encryption Services
-
-#### CompanyCryptoService
-Handles file encryption for secure storage.
-- AES-256-CBC encryption for files
-- Dynamic key generation using PBKDF2
-- Company-only decryption capability
-- Unique fileId generation for each upload
-
-#### Web3StorageService
-Manages decentralized file storage.
-- Web3.Storage/IPFS integration
-- Space management and delegation
-- CID generation and retrieval
-- Support for both email and wallet users
-
-### Messaging Services
-
-#### OffChainChatService
-Free messaging for all users.
-- No blockchain fees required
-- Email authentication sufficient
-- Real-time message delivery
-- Basic file sharing capabilities
-
-#### OnChainChatService
-Blockchain-secured messaging.
-- CrypTalk protocol integration
-- Immutable message timestamps
-- Encrypted message storage
-- Requires wallet connection
-
-### Payment & Blockchain Services
-
-#### PaymentService
-Cryptocurrency transaction management.
-- MetaMask integration
-- Polygon network support
-- Transaction history tracking
-- Wallet connection verification
-
-#### AccessControlService
-Manages feature access based on authentication.
-- Wallet requirement checks
-- Feature gating logic
-- Progressive enhancement support
-
-## Getting Started
-
-1. Install dependencies:
-
-```bash
-npm install
+### Main Navigation Structure
+```
+CrypTalk Platform
+├── 📁 Off Chain Space
+│   ├── 📝 NDA Creation
+│   ├── 📁 Document Upload  
+│   └── 🤖 AI Review
+└── ⛓️ On Chain Space
+    ├── 🦊 Connect Wallet
+    ├── 💰 Payments
+    └── ⏰ Timestamped Chat
 ```
 
-2. Run the development server:
+### Header & Navigation
+- **Centralized branding** - CrypTalk Platform prominently displayed
+- **Smart settings menu** - only appears when authenticated
+- **Plataforma option** - quick navigation back to main dashboard
+- **Clean interface** - no redundant login buttons
 
-```bash
-npm run dev
-```
+## 📋 Feature Details
 
-3. Build for production:
+### Off Chain Features
 
-```bash
-npm run build
-```
+#### 📝 NDA Creation
+- **AI-powered generation** of customized NDAs
+- **Legal compliance** templates
+- **Quick customization** and editing
+- **Reusable templates** for future use
 
-## Security Architecture
+#### 📁 Document Upload
+- **Categorized upload** by document type:
+  - 💼 Pitch Deck
+  - 📊 Financial Projections  
+  - 🛡️ Patents
+  - 👥 Cap Table
+  - 📄 Other Documents
+- **Secure storage** with encryption
+- **Organized library** for easy management
 
-### Encryption & Key Management
-- **No Persistent Key Storage**: Encryption keys are derived on-demand, never stored
-- **Company-Only Decryption**: Only Surgical Brasil's wallet can decrypt files
-- **Dynamic Key Generation**: Each file gets a unique encryption key
-- **PBKDF2 Key Derivation**: 100,000 iterations for master key security
+#### 🤖 AI Review
+- **Specialized AI agents** for expert analysis:
+  - 💼 **Financial Analyst** - Reviews projections and cap tables
+  - ⚖️ **Legal Expert** - Analyzes patents and contracts
+  - 🚀 **Business Strategist** - Evaluates pitch decks and business models
+- **Detailed reports** with insights and recommendations
+- **Domain expertise** for accurate analysis
 
-### File Storage Security
-- **Client-Side Encryption**: Files encrypted before upload
-- **IPFS Public Storage**: Encrypted files stored on public IPFS
-- **Private Key Management**: fileId stored privately, not on blockchain
-- **Access Control**: Wallet verification for on-chain features
+### On Chain Features
 
-## Usage Workflow
+#### 🦊 Wallet Connection
+- **MetaMask integration** with user-friendly setup
+- **Network detection** and configuration
+- **Status indicators** for connection state
+- **User profile** with wallet information
 
-### For Email Users (Basic Features)
-1. Enter email address on login page
-2. Click Magic Link in email
-3. Access off-chain chat immediately
-4. Upload files to Web3.Storage
-5. Connect wallet when ready for advanced features
+#### 💰 Cryptocurrency Payments
+- **Secure transactions** via connected wallet
+- **Polygon network** for low-cost operations
+- **Transaction history** and verification
+- **Payment confirmation** system
 
-### For Wallet Users (Full Features)
-1. Login with email first
-2. Navigate to "On Chain" section
-3. Connect MetaMask wallet
-4. Access timestamped chat
-5. Make cryptocurrency payments
-6. Store files with blockchain proof
+#### ⏰ Timestamped Secure Chat
+- **Blockchain-recorded messages** for immutable history
+- **End-to-end encryption** for privacy
+- **Legal compliance** with permanent timestamps
+- **File sharing** with blockchain proof
 
-## Technologies Used
+## 🛠️ Technical Stack
 
 ### Frontend Framework
-- **React 18** with TypeScript
-- **Vite** for fast build tooling
-- **Chakra UI** for responsive components
+- **React 18** with TypeScript for type safety
+- **Vite** for fast development and building
+- **Chakra UI** for consistent, responsive design
 - **React Router** for navigation
 
-### Authentication
+### Authentication & Security
 - **Magic SDK** for email authentication
 - **MetaMask** for Web3 wallet integration
-- **DID (Decentralized Identifiers)** for identity
+- **AES-256-CBC encryption** for file security
+- **PBKDF2** for secure key derivation
 
 ### Blockchain & Storage
 - **Polygon Mumbai** testnet for transactions
 - **Web3.Storage/IPFS** for decentralized storage
 - **Ethers.js** for blockchain interactions
-- **CrypTalk Protocol** for on-chain messaging
+- **DID (Decentralized Identifiers)** for identity
 
-### Security
-- **CryptoJS** for AES encryption
-- **PBKDF2** for key derivation
-- **Web3 signatures** for authentication
+### Development Tools
+- **TypeScript** for enhanced code quality
+- **ESLint** for code standards
+- **Git** for version control
+- **npm** for package management
 
-## API Keys & Configuration
+## ⚙️ Configuration
 
-Required environment variables:
+### Environment Variables
 ```env
 VITE_MAGIC_PUBLISHABLE_KEY=pk_live_20134EF9B8F26232  # Magic Link API
 VITE_W3S_AGENT_KEY=your_web3storage_key              # Web3.Storage
 VITE_W3S_SPACE_DID=your_space_did                    # Web3.Storage Space
 ```
 
-## Contributing
+### Build Commands
+```bash
+# Development
+npm run dev
 
-See [CHANGELOG.md](./CHANGELOG.md) for recent updates and changes.
+# Production build
+npm run build
 
-## License
+# Preview production build
+npm run preview
 
-This project is licensed under the MIT License.
+# Type checking
+npm run type-check
+
+# Linting
+npm run lint
+```
+
+## 📁 Project Structure
+
+```
+src/
+├── components/          # Reusable UI components
+│   ├── Header.tsx      # Centralized navigation header
+│   ├── Layout.tsx      # Main application layout
+│   └── ...            # Other components
+├── pages/              # Main application pages
+│   ├── Dashboard.tsx   # Main platform with both spaces
+│   ├── Login.tsx       # Dual authentication page
+│   ├── Settings.tsx    # User settings and preferences
+│   └── ...            # Other pages
+├── services/           # Core business logic
+│   ├── Web3StorageService.ts     # File storage management
+│   ├── MagicLinkAuthService.ts   # Email authentication
+│   ├── PaymentService.ts         # Crypto payments
+│   └── ...                      # Other services
+├── contexts/           # React state management
+│   └── AuthContext.tsx # Authentication state
+└── utils/             # Helper functions and utilities
+```
+
+## 🔧 Development Workflow
+
+### Authentication Flow
+1. **User visits platform** → Sees dual authentication options
+2. **Chooses email login** → Enters email, receives magic link
+3. **Accesses Off Chain** → Can create NDAs, upload docs, use AI review
+4. **Connects wallet** → Unlocks On Chain features (payments, timestamped chat)
+
+### Feature Development
+1. **Off Chain features** → Focus on document management and AI integration
+2. **On Chain features** → Integrate with existing blockchain infrastructure
+3. **Authentication** → Maintain compatibility with both email and wallet users
+
+## 🔒 Security Features
+
+### File Security
+- **Client-side encryption** before upload
+- **Company-only decryption** capability
+- **Dynamic key generation** per file
+- **No persistent key storage**
+
+### Access Control
+- **Progressive feature access** based on authentication level
+- **Wallet verification** for on-chain features
+- **Session management** for persistent login
+
+### Data Privacy
+- **End-to-end encryption** for sensitive communications
+- **Decentralized storage** for censorship resistance
+- **Blockchain verification** for data integrity
+
+## 📈 Recent Updates (v1.1.0)
+
+### Design Improvements
+- ✅ **Unified interface style** - consistent card-based design
+- ✅ **Simplified navigation** - two main spaces (Off Chain/On Chain)
+- ✅ **Centralized header** - focused branding presentation
+- ✅ **Clean login page** - minimal information, clear choices
+
+### Authentication Enhancements
+- ✅ **Dual authentication** options on single page
+- ✅ **MetaMask detection** and helpful error messages
+- ✅ **Progressive access** - email first, wallet when needed
+- ✅ **Smart navigation** - settings menu only when authenticated
+
+### User Experience
+- ✅ **Free navigation** between On Chain buttons
+- ✅ **AI agent personas** for document review
+- ✅ **Document categorization** for better organization
+- ✅ **Streamlined workflow** from NDA creation to secure sharing
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📚 Documentation
+
+Additional documentation available:
+- [CHANGELOG.md](./CHANGELOG.md) - Recent changes and updates
+- [SECURITY_ARCHITECTURE.md](./SECURITY_ARCHITECTURE.md) - Security implementation details
+- [TEST-GUIDE.md](./TEST-GUIDE.md) - Testing procedures and guidelines
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+For support and questions:
+- Check the documentation in the `docs/` folder
+- Review the test guides for troubleshooting
+- Contact the development team for technical assistance
+
+---
+
+**CrypTalk Platform** - Secure document sharing with blockchain integration
