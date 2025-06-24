@@ -1,6 +1,6 @@
 // Test Mode Configuration
-// Set this to true to disable authentication for testing
-export const TEST_MODE = true;
+// Set this to false to enable real authentication
+export const TEST_MODE = false;
 
 // Mock user data for testing
 export const MOCK_USER = {
