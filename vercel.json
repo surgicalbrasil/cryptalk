@@ -1,5 +1,0 @@
-{
-  "installCommand": "cd cryptalk-frontend && npm install",
-  "buildCommand": "cd cryptalk-frontend && npm run build",
-  "outputDirectory": "cryptalk-frontend/dist"
-}
