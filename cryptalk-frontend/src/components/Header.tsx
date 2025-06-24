@@ -89,7 +89,11 @@ const Header: React.FC = () => {
 
               {/* Mobile navigation removed - handled by dashboard tabs */}
             </>
-          ) : null}
+          ) : (
+            <Button colorScheme="blue" onClick={() => navigate('/login')} size="sm">
+              Login
+            </Button>
+          )}
         </HStack>
       </Flex>
     </Box>
