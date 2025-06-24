@@ -77,6 +77,9 @@ const Header: React.FC = () => {
                   aria-label="Settings"
                 />
                 <MenuList>
+                  <MenuItem onClick={() => navigate('/dashboard')}>
+                    🏠 Plataforma
+                  </MenuItem>
                   <MenuItem onClick={() => navigate('/settings')}>
                     ⚙️ Configurações
                   </MenuItem>
@@ -90,9 +93,12 @@ const Header: React.FC = () => {
               {/* Mobile navigation removed - handled by dashboard tabs */}
             </>
           ) : (
-            <Button colorScheme="blue" onClick={() => navigate('/login')} size="sm">
-              Login
-            </Button>
+            // Only show login button if not already on login page
+            location.pathname !== '/login' && location.pathname !== '/login-metamask' && (
+              <Button colorScheme="blue" onClick={() => navigate('/login')} size="sm">
+                Login
+              </Button>
+            )
           )}
         </HStack>
       </Flex>
