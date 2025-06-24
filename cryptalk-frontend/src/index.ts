@@ -31,14 +31,12 @@ export type {
   IPaymentProvider 
 } from './modules/payments';
 
-// 🚀 Main CrypTalk Class - Ultra-Simple API
-class CrypTalkMain {
-  private static system = CrypTalk.getInstance();
+// 🚀 Main CrypTalk API - Ultra-Simple Object
+const system = CrypTalk.getInstance();
 
+const CrypTalkMain = {
   // Initialize the entire system
-  static async initialize() {
-    const system = this.system;
-    
+  async initialize() {
     // Register modules
     system
       .register(new (await import('./modules/storage')).StorageModule())
@@ -55,19 +53,19 @@ class CrypTalkMain {
     }
     
     return result;
-  }
+  },
 
   // Module APIs
-  static get storage() { return this.system.storage; }
-  static get chat() { return this.system.chat; }
-  static get payments() { return this.system.payments; }
-  static get events() { return this.system.eventBus; }
+  get storage() { return system.storage; },
+  get chat() { return system.chat; },
+  get payments() { return system.payments; },
+  get events() { return system.eventBus; },
   
   // Health Check
-  static async getHealth() { return await this.system.getHealth(); }
+  async getHealth() { return await system.getHealth(); },
   
   // Destroy
-  static async destroy() { await this.system.destroy(); }
-}
+  async destroy() { await system.destroy(); }
+};
 
 export default CrypTalkMain;
