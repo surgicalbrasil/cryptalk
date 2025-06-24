@@ -91,19 +91,6 @@ const Dashboard: React.FC = () => {
                 Create NDAs, upload documents, and manage secure file sharing with AI-powered review.
                 All operations are performed off-chain for fast and free document management.
               </Text>
-              
-              {/* Status Badges */}
-              <HStack spacing={3}>
-                <Badge colorScheme="blue" p={2}>
-                  📝 NDA Ready
-                </Badge>
-                <Badge colorScheme="green" p={2}>
-                  📁 Upload Ready
-                </Badge>
-                <Badge colorScheme="purple" p={2}>
-                  🤖 AI Ready
-                </Badge>
-              </HStack>
             </VStack>
 
             {/* Navigation Tabs */}
