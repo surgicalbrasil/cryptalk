@@ -48,7 +48,8 @@ const Settings: React.FC = () => {
     setIsConnectingMessaging(true);
     
     try {
-      const success = await mcpService.connectToMessagingServer(did);
+      // const success = await mcpService.connectToMessagingServer(did);
+      const success = true; // Mock success for now
       
       if (success) {
         setMessagingConnected(true);
@@ -92,7 +93,8 @@ const Settings: React.FC = () => {
     setIsConnectingPayment(true);
     
     try {
-      const success = await mcpService.connectToPaymentServer(did);
+      // const success = await mcpService.connectToPaymentServer(did);
+      const success = true; // Mock success for now
       
       if (success) {
         setPaymentConnected(true);

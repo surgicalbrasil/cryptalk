@@ -9,7 +9,11 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "upload-server": "node upload-server.js",
-    "vercel-build": "npm install && npm run build"
+    "vercel-build": "npm install && npm run build",
+    "setup": "chmod +x scripts/setup.sh && ./scripts/setup.sh",
+    "deploy": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh",
+    "start": "npm run dev",
+    "clean": "rm -rf node_modules dist && npm install"
   },
   "dependencies": {
     "@chakra-ui/icons": "^2.0.19",
@@ -18,6 +22,7 @@
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
     "@magic-sdk/provider": "^29.2.0",
+    "@types/react-dropzone": "^5.1.0",
     "@ucanto/principal": "^9.0.2",
     "@web3-storage/access": "^20.3.0",
     "@web3-storage/w3up-client": "^17.3.0",
@@ -33,6 +38,7 @@
     "multer": "^2.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-dropzone": "^14.3.8",
     "react-icons": "^5.5.0",
     "react-router-dom": "^6.14.2"
   },

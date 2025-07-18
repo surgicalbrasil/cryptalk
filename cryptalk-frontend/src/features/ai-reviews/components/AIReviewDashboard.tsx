@@ -26,7 +26,7 @@ import {
   Alert,
   AlertIcon
 } from '@chakra-ui/react';
-import { FiFileText, FiDownload, FiPlay, FiX, FiCheck, FiClock, FiBarChart3 } from 'react-icons/fi';
+import { FiFileText, FiDownload, FiPlay, FiX, FiCheck, FiClock, FiBarChart } from 'react-icons/fi';
 import { useAIReviews } from '../hooks/useAIReviews';
 import { AIReviewerType, DocumentType, ReviewStatus } from '../../../shared/types';
 

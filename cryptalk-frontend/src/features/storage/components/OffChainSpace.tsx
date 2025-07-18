@@ -14,7 +14,9 @@ import {
 import { SectionTabs } from '../../../shared/components/Navigation/SectionTabs';
 import { FeatureCard } from '../../../shared/components/Layout/FeatureCard';
 import { DocumentTypeSelector } from './DocumentTypeSelector';
+import { DocumentAnalyzer } from '../../document-analysis/components/DocumentAnalyzer';
 import { DocumentCategory } from '../../../shared/types';
+import { DocumentService } from '../../document-analysis/services/documentService';
 
 type OffChainSection = 'nda' | 'upload' | 'ai';
 
@@ -25,15 +27,24 @@ const sectionOptions = [
 ];
 
 export const OffChainSpace: React.FC = () => {
-  const [selectedSection, setSelectedSection] = useState<OffChainSection>('nda');
+  const [selectedSection, setSelectedSection] = useState<OffChainSection>('upload');
   const [selectedDocType, setSelectedDocType] = useState<DocumentCategory | undefined>();
+  const [showAnalyzer, setShowAnalyzer] = useState(false);
+  const [availableCategories] = useState(DocumentService.getDocumentCategories());
 
   const handleSectionChange = (section: string) => {
     setSelectedSection(section as OffChainSection);
+    setShowAnalyzer(false);
   };
 
   const handleDocTypeSelect = (type: DocumentCategory) => {
     setSelectedDocType(type);
+    setShowAnalyzer(true);
+  };
+
+  const handleBackToCategories = () => {
+    setShowAnalyzer(false);
+    setSelectedDocType(undefined);
   };
 
   return (
@@ -95,102 +106,130 @@ export const OffChainSpace: React.FC = () => {
 
       {/* Document Upload Section */}
       {selectedSection === 'upload' && (
-        <FeatureCard
-          title="Document Upload"
-          icon="📁"
-          headerBg="green.50"
-          alertStatus="success"
-          alertMessage="Securely upload your documents for safe storage and AI analysis."
-          actionButton={{
-            text: 'Upload Documents',
-            colorScheme: 'green',
-            icon: '📁'
-          }}
-        >
-          <VStack spacing={4} align="start">
-            <Text fontWeight="bold">Select Document Type:</Text>
-            <DocumentTypeSelector
-              onTypeSelect={handleDocTypeSelect}
-              selectedType={selectedDocType}
-            />
-          </VStack>
-          
-          <VStack spacing={4} align="stretch" p={6} bg="green.50" borderRadius="md">
-            <Text fontWeight="bold" color="green.700">📂 Document Library</Text>
-            <Text color="green.600">
-              Your uploaded documents will be organized here by type and ready for AI review.
-            </Text>
-            <Text fontSize="sm" color="gray.500">
-              No documents uploaded yet
-            </Text>
-          </VStack>
-        </FeatureCard>
+        showAnalyzer && selectedDocType ? (
+          <DocumentAnalyzer
+            category={selectedDocType}
+            onBack={handleBackToCategories}
+          />
+        ) : (
+          <FeatureCard
+            title="Document Upload & Analysis"
+            icon="📁"
+            headerBg="green.50"
+            alertStatus="success"
+            alertMessage="Upload documents and get AI-powered analysis with specialized agents."
+          >
+            <VStack spacing={4} align="start">
+              <Text fontWeight="bold">Select Document Type:</Text>
+              <DocumentTypeSelector
+                onTypeSelect={handleDocTypeSelect}
+                selectedType={selectedDocType}
+              />
+            </VStack>
+            
+            <VStack spacing={4} align="stretch" p={6} bg="green.50" borderRadius="md">
+              <Text fontWeight="bold" color="green.700">📂 Available Document Categories</Text>
+              <Text color="green.600">
+                Choose a document type above to start uploading and get specialized AI analysis.
+              </Text>
+              <VStack align="start" spacing={2}>
+                {availableCategories.map((category) => (
+                  <HStack key={category.id} spacing={2}>
+                    <Text fontSize="lg">{category.icon}</Text>
+                    <Text fontSize="sm" fontWeight="medium">{category.name}</Text>
+                    <Badge colorScheme="blue" size="sm">
+                      {category.agents.length} AI Agents
+                    </Badge>
+                  </HStack>
+                ))}
+              </VStack>
+            </VStack>
+          </FeatureCard>
+        )
       )}
 
       {/* AI Review Section */}
       {selectedSection === 'ai' && (
-        <FeatureCard
-          title="AI Agent Review"
-          icon="🤖"
-          headerBg="purple.50"
-          alertStatus="info"
-          alertTitle="Expert AI Analysis"
-          alertMessage="Select specialized AI agents to review your documents with domain expertise."
-          actionButton={{
-            text: 'Start AI Review',
-            colorScheme: 'purple',
-            icon: '🤖'
-          }}
-        >
-          <Badge colorScheme="purple" alignSelf="start">
-            🎯 Specialized Expertise • 📊 Detailed Analysis • ⚡ Instant Results
-          </Badge>
-          
-          <VStack spacing={3} align="stretch">
-            <HStack justify="space-between" p={4} border="2px" borderColor="blue.200" borderRadius="md" bg="blue.50">
-              <VStack align="start" spacing={1}>
-                <HStack>
-                  <Text>💼</Text>
-                  <Text fontWeight="bold">Financial Analyst</Text>
-                </HStack>
-                <Text fontSize="sm" color="gray.600">Reviews financial projections, cap tables, and revenue models</Text>
-              </VStack>
-              <Badge colorScheme="blue">Available</Badge>
-            </HStack>
+        showAnalyzer && selectedDocType ? (
+          <DocumentAnalyzer
+            category={selectedDocType}
+            onBack={handleBackToCategories}
+          />
+        ) : (
+          <FeatureCard
+            title="AI Agent Review"
+            icon="🤖"
+            headerBg="purple.50"
+            alertStatus="info"
+            alertTitle="Expert AI Analysis"
+            alertMessage="Select document type to access specialized AI agents for in-depth analysis."
+          >
+            <VStack spacing={4} align="start">
+              <Text fontWeight="bold">Select Document Type for AI Review:</Text>
+              <DocumentTypeSelector
+                onTypeSelect={handleDocTypeSelect}
+                selectedType={selectedDocType}
+              />
+            </VStack>
             
-            <HStack justify="space-between" p={4} border="2px" borderColor="green.200" borderRadius="md" bg="green.50">
-              <VStack align="start" spacing={1}>
-                <HStack>
-                  <Text>⚖️</Text>
-                  <Text fontWeight="bold">Legal Expert</Text>
-                </HStack>
-                <Text fontSize="sm" color="gray.600">Analyzes patents, contracts, and legal compliance</Text>
-              </VStack>
-              <Badge colorScheme="green">Available</Badge>
-            </HStack>
+            <Badge colorScheme="purple" alignSelf="start">
+              🎯 Specialized Expertise • 📊 Detailed Analysis • ⚡ Instant Results
+            </Badge>
             
-            <HStack justify="space-between" p={4} border="2px" borderColor="purple.200" borderRadius="md" bg="purple.50">
-              <VStack align="start" spacing={1}>
-                <HStack>
-                  <Text>🚀</Text>
-                  <Text fontWeight="bold">Business Strategist</Text>
+            <VStack spacing={4} align="stretch" p={6} bg="purple.50" borderRadius="md">
+              <Text fontWeight="bold" color="purple.700">🤖 AI Agent Capabilities</Text>
+              <Text color="purple.600">
+                Our AI agents provide expert analysis tailored to your document type:
+              </Text>
+              
+              <VStack spacing={3} align="stretch">
+                <HStack justify="space-between" p={3} border="1px" borderColor="blue.200" borderRadius="md" bg="blue.50">
+                  <VStack align="start" spacing={1}>
+                    <HStack>
+                      <Text>💼</Text>
+                      <Text fontWeight="bold" fontSize="sm">Financial Analyst</Text>
+                    </HStack>
+                    <Text fontSize="xs" color="gray.600">Reviews financial projections, cap tables, and revenue models</Text>
+                  </VStack>
+                  <Badge colorScheme="blue" size="sm">Available</Badge>
                 </HStack>
-                <Text fontSize="sm" color="gray.600">Evaluates pitch decks, business models, and market analysis</Text>
+                
+                <HStack justify="space-between" p={3} border="1px" borderColor="green.200" borderRadius="md" bg="green.50">
+                  <VStack align="start" spacing={1}>
+                    <HStack>
+                      <Text>⚖️</Text>
+                      <Text fontWeight="bold" fontSize="sm">Legal Expert</Text>
+                    </HStack>
+                    <Text fontSize="xs" color="gray.600">Analyzes patents, contracts, and legal compliance</Text>
+                  </VStack>
+                  <Badge colorScheme="green" size="sm">Available</Badge>
+                </HStack>
+                
+                <HStack justify="space-between" p={3} border="1px" borderColor="purple.200" borderRadius="md" bg="purple.50">
+                  <VStack align="start" spacing={1}>
+                    <HStack>
+                      <Text>🚀</Text>
+                      <Text fontWeight="bold" fontSize="sm">Business Strategist</Text>
+                    </HStack>
+                    <Text fontSize="xs" color="gray.600">Evaluates pitch decks, business models, and market analysis</Text>
+                  </VStack>
+                  <Badge colorScheme="purple" size="sm">Available</Badge>
+                </HStack>
+                
+                <HStack justify="space-between" p={3} border="1px" borderColor="orange.200" borderRadius="md" bg="orange.50">
+                  <VStack align="start" spacing={1}>
+                    <HStack>
+                      <Text>🔧</Text>
+                      <Text fontWeight="bold" fontSize="sm">Technical Expert</Text>
+                    </HStack>
+                    <Text fontSize="xs" color="gray.600">Reviews technical specs, architecture, and innovation</Text>
+                  </VStack>
+                  <Badge colorScheme="orange" size="sm">Available</Badge>
+                </HStack>
               </VStack>
-              <Badge colorScheme="purple">Available</Badge>
-            </HStack>
-          </VStack>
-          
-          <VStack spacing={4} align="stretch" p={6} bg="purple.50" borderRadius="md">
-            <Text fontWeight="bold" color="purple.700">📋 Review Results</Text>
-            <Text color="purple.600">
-              Detailed AI analysis reports will appear here with insights, recommendations, and scoring.
-            </Text>
-            <Text fontSize="sm" color="gray.500">
-              No reviews completed yet
-            </Text>
-          </VStack>
-        </FeatureCard>
+            </VStack>
+          </FeatureCard>
+        )
       )}
     </VStack>
   );

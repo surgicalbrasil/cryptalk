@@ -1,0 +1,21 @@
+{
+  "name": "claude-code-monitoring",
+  "version": "1.0.0",
+  "description": "Claude Code Health Monitoring Service",
+  "main": "health-monitor.js",
+  "scripts": {
+    "start": "node health-monitor.js",
+    "test": "echo \"No tests yet\""
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "prom-client": "^14.2.0",
+    "dockerode": "^4.0.2",
+    "fs-extra": "^11.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "Claude Code Team",
+  "license": "MIT"
+}

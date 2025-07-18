@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import LoginMetaMask from './pages/LoginMetaMask';
-import Dashboard from './pages/Dashboard';
+// import Dashboard from './pages/Dashboard';
 import ModularDashboard from './pages/ModularDashboard';
 import Settings from './pages/Settings';
 import { ChakraProvider } from '@chakra-ui/react';

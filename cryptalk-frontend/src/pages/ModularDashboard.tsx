@@ -15,6 +15,7 @@ import {
 } from '@chakra-ui/react';
 import { OffChainSpace } from '../features/storage/components/OffChainSpace';
 import { OnChainSpace } from '../features/payments/components/OnChainSpace';
+import DocumentAnalysis from '../components/DocumentAnalysis';
 import WalletConnectionModal from '../components/WalletConnectionModal';
 import { useWalletConnection } from '../hooks/useWalletConnection';
 import CrypTalk from '../index';
@@ -103,6 +104,9 @@ const ModularDashboard: React.FC = () => {
             📁 Off Chain Space
           </Tab>
           <Tab fontSize="lg" fontWeight="semibold">
+            📄 Document Analysis
+          </Tab>
+          <Tab fontSize="lg" fontWeight="semibold">
             ⛓️ On Chain Space
           </Tab>
         </TabList>
@@ -111,6 +115,11 @@ const ModularDashboard: React.FC = () => {
           {/* OFF CHAIN SPACE TAB */}
           <TabPanel p={0}>
             <OffChainSpace />
+          </TabPanel>
+
+          {/* DOCUMENT ANALYSIS TAB */}
+          <TabPanel p={0}>
+            <DocumentAnalysis />
           </TabPanel>
 
           {/* ON CHAIN SPACE TAB */}

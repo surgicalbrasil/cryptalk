@@ -1,0 +1,50 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert_rules.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+scrape_configs:
+  # Monitoramento do serviço principal
+  - job_name: 'claude-service'
+    static_configs:
+      - targets: ['claude-service:3000']
+    scrape_interval: 15s
+    metrics_path: '/metrics'
+    
+  # Monitoramento do health monitor
+  - job_name: 'health-monitor'
+    static_configs:
+      - targets: ['monitoring:9090']
+    scrape_interval: 15s
+    metrics_path: '/metrics'
+    
+  # Monitoramento do Nginx
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:80']
+    scrape_interval: 30s
+    metrics_path: '/nginx-health'
+    
+  # Monitoramento do Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+    
+  # Monitoramento do PostgreSQL
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    scrape_interval: 30s
+    
+  # Monitoramento do próprio Prometheus
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
