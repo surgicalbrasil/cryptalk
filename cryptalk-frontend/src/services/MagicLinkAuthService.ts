@@ -1,6 +1,28 @@
 import { Magic } from 'magic-sdk';
 import { MagicRPCProviderModule } from '@magic-sdk/provider';
 
+// Ensure logger is available for Magic SDK
+if (typeof window !== 'undefined' && !window.logger) {
+  window.logger = {
+    log: console.log.bind(console),
+    warn: console.warn.bind(console),
+    error: console.error.bind(console),
+    info: console.info.bind(console),
+    debug: console.debug.bind(console)
+  };
+}
+
+// Also ensure global logger is available
+if (typeof globalThis !== 'undefined' && !globalThis.logger) {
+  globalThis.logger = {
+    log: console.log.bind(console),
+    warn: console.warn.bind(console),
+    error: console.error.bind(console),
+    info: console.info.bind(console),
+    debug: console.debug.bind(console)
+  };
+}
+
 interface AuthUser {
   email: string;
   publicAddress: string;
