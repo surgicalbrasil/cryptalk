@@ -5,6 +5,46 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CrypTalk - Enhanced Modular Web3 Platform</title>
+    
+    <!-- Logger polyfill - Must be loaded before any other scripts -->
+    <script>
+      // Global logger polyfill for Magic SDK compatibility
+      (function() {
+        'use strict';
+        
+        const logger = {
+          log: function() { console.log.apply(console, arguments); },
+          warn: function() { console.warn.apply(console, arguments); },
+          error: function() { console.error.apply(console, arguments); },
+          info: function() { console.info.apply(console, arguments); },
+          debug: function() { console.debug.apply(console, arguments); }
+        };
+        
+        // Add to all possible global contexts
+        if (typeof window !== 'undefined') {
+          window.logger = logger;
+        }
+        
+        if (typeof globalThis !== 'undefined') {
+          globalThis.logger = logger;
+        }
+        
+        if (typeof self !== 'undefined') {
+          self.logger = logger;
+        }
+        
+        if (typeof global !== 'undefined') {
+          global.logger = logger;
+        }
+        
+        // Also add as a global variable
+        if (typeof logger === 'undefined') {
+          window.logger = logger;
+        }
+        
+        console.log('Logger polyfill loaded');
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

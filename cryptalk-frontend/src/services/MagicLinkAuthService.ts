@@ -1,27 +1,6 @@
 import { Magic } from 'magic-sdk';
 import { MagicRPCProviderModule } from '@magic-sdk/provider';
-
-// Ensure logger is available for Magic SDK
-if (typeof window !== 'undefined' && !window.logger) {
-  window.logger = {
-    log: console.log.bind(console),
-    warn: console.warn.bind(console),
-    error: console.error.bind(console),
-    info: console.info.bind(console),
-    debug: console.debug.bind(console)
-  };
-}
-
-// Also ensure global logger is available
-if (typeof globalThis !== 'undefined' && !globalThis.logger) {
-  globalThis.logger = {
-    log: console.log.bind(console),
-    warn: console.warn.bind(console),
-    error: console.error.bind(console),
-    info: console.info.bind(console),
-    debug: console.debug.bind(console)
-  };
-}
+import '../utils/logger-polyfill'; // Ensure logger is available
 
 interface AuthUser {
   email: string;
@@ -40,6 +19,9 @@ class MagicLinkAuthService {
     // Initialize Magic instance with your publishable API key
     if (typeof window !== 'undefined') {
       try {
+        // Ensure logger is available before Magic SDK initialization
+        this.ensureLogger();
+        
         // Using the provided Magic Link public key
         this.magic = new Magic('pk_live_20134EF9B8F26232', {
           network: 'polygon-mumbai' // Using Mumbai testnet to match the blockchain config
@@ -49,7 +31,46 @@ class MagicLinkAuthService {
         console.log('Magic SDK initialized. Available user methods:', Object.getOwnPropertyNames(this.magic.user));
       } catch (error) {
         console.error('Failed to initialize Magic SDK:', error);
+        // Try to reinitialize without network config if it fails
+        try {
+          this.magic = new Magic('pk_live_20134EF9B8F26232');
+          console.log('Magic SDK initialized without network config');
+        } catch (fallbackError) {
+          console.error('Failed to initialize Magic SDK even without network config:', fallbackError);
+        }
       }
+    }
+  }
+
+  private ensureLogger(): void {
+    const logger = {
+      log: console.log.bind(console),
+      warn: console.warn.bind(console),
+      error: console.error.bind(console),
+      info: console.info.bind(console),
+      debug: console.debug.bind(console)
+    };
+
+    // Ensure logger is available in all contexts
+    if (typeof window !== 'undefined' && !window.logger) {
+      window.logger = logger;
+    }
+    
+    if (typeof globalThis !== 'undefined' && !globalThis.logger) {
+      globalThis.logger = logger;
+    }
+    
+    if (typeof self !== 'undefined' && !self.logger) {
+      self.logger = logger;
+    }
+    
+    // Also try to set it as a global variable
+    try {
+      if (typeof window !== 'undefined') {
+        (window as any).logger = logger;
+      }
+    } catch (e) {
+      // Ignore if we can't set it
     }
   }
 

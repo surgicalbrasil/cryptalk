@@ -5,32 +5,7 @@ import App from './App.tsx'  // Beautiful full app with login/dashboard
 // import App from './app/App.tsx'  // Simple modular demo
 // import App from './App.simple.tsx' // Using simplified version
 import ErrorBoundary from './components/ErrorBoundary'
-
-// Fix for Magic SDK logger issue - Global logger polyfill
-if (typeof window !== 'undefined') {
-  const logger = {
-    log: console.log.bind(console),
-    warn: console.warn.bind(console),
-    error: console.error.bind(console),
-    info: console.info.bind(console),
-    debug: console.debug.bind(console)
-  };
-  
-  // Add logger to window
-  if (!window.logger) {
-    window.logger = logger;
-  }
-  
-  // Add logger to global scope (for modules that expect it)
-  if (typeof globalThis !== 'undefined' && !globalThis.logger) {
-    globalThis.logger = logger;
-  }
-  
-  // Add logger to self (for web workers)
-  if (typeof self !== 'undefined' && !self.logger) {
-    self.logger = logger;
-  }
-}
+import './utils/logger-polyfill' // Ensure logger is available
 
 // Debug logging
 console.log('CrypTalk: main.tsx loaded');
