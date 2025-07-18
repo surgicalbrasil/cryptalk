@@ -5,7 +5,7 @@ import App from './App.tsx'  // Beautiful full app with login/dashboard
 // import App from './app/App.tsx'  // Simple modular demo
 // import App from './App.simple.tsx' // Using simplified version
 import ErrorBoundary from './components/ErrorBoundary'
-import './utils/logger-polyfill' // Ensure logger is available
+// Logger polyfill is loaded in index.html
 
 // Debug logging
 console.log('CrypTalk: main.tsx loaded');

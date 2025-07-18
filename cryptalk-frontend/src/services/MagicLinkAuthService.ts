@@ -1,6 +1,6 @@
 import { Magic } from 'magic-sdk';
 import { MagicRPCProviderModule } from '@magic-sdk/provider';
-import '../utils/logger-polyfill'; // Ensure logger is available
+// Logger polyfill is loaded in index.html
 
 interface AuthUser {
   email: string;
