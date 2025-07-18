@@ -19,9 +19,6 @@ class MagicLinkAuthService {
     // Initialize Magic instance with your publishable API key
     if (typeof window !== 'undefined') {
       try {
-        // Ensure logger is available before Magic SDK initialization
-        this.ensureLogger();
-        
         // Using the provided Magic Link public key
         this.magic = new Magic('pk_live_20134EF9B8F26232', {
           network: 'polygon-mumbai' // Using Mumbai testnet to match the blockchain config
@@ -39,38 +36,6 @@ class MagicLinkAuthService {
           console.error('Failed to initialize Magic SDK even without network config:', fallbackError);
         }
       }
-    }
-  }
-
-  private ensureLogger(): void {
-    const logger = {
-      log: console.log.bind(console),
-      warn: console.warn.bind(console),
-      error: console.error.bind(console),
-      info: console.info.bind(console),
-      debug: console.debug.bind(console)
-    };
-
-    // Ensure logger is available in all contexts
-    if (typeof window !== 'undefined' && !window.logger) {
-      window.logger = logger;
-    }
-    
-    if (typeof globalThis !== 'undefined' && !globalThis.logger) {
-      globalThis.logger = logger;
-    }
-    
-    if (typeof self !== 'undefined' && !self.logger) {
-      self.logger = logger;
-    }
-    
-    // Also try to set it as a global variable
-    try {
-      if (typeof window !== 'undefined') {
-        (window as any).logger = logger;
-      }
-    } catch (e) {
-      // Ignore if we can't set it
     }
   }
 

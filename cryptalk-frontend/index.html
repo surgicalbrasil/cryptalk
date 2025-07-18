@@ -23,11 +23,10 @@
       // Ensure logger is available in global scope
       if (typeof window !== 'undefined' && window.logger) {
         try {
-          // Try to make it available as a global variable
-          window.eval('var logger = window.logger;');
-        } catch (e) {
-          // Fallback
+          // CSP-safe approach - no eval needed
           window.logger = window.logger;
+        } catch (e) {
+          // Fallback already handled above
         }
       }
     </script>

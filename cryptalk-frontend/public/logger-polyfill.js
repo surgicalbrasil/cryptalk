@@ -53,9 +53,12 @@
     }
   } catch (e) {}
   
-  // Most important: Define logger in the global scope
+  // Most important: Define logger in the global scope without eval
   try {
-    eval('var logger = window.logger;');
+    // Instead of eval, use direct assignment
+    if (typeof window !== 'undefined') {
+      window.logger = loggerObj;
+    }
   } catch (e) {}
   
   // Also try to define it as a property of the global object
