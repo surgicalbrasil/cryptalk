@@ -20,15 +20,22 @@ import {
   CardBody,
   CardHeader,
   Grid,
-  Badge
+  Badge,
+  FormErrorMessage,
+  Icon,
+  AlertTitle,
+  AlertDescription
 } from '@chakra-ui/react';
+import { CheckCircleIcon, EmailIcon } from '@chakra-ui/icons';
 import { useAuth } from '../contexts/AuthContext';
 import AppConfig from '../config/AppConfig';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isMetaMaskLoading, setIsMetaMaskLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
   const { loginWithEmail, isEmailAuthenticated, isInitialized, connectWallet } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
@@ -40,35 +47,53 @@ const Login: React.FC = () => {
     }
   }, [isInitialized, isEmailAuthenticated, navigate]);
 
+  // Email validation
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setEmail(value);
+    setEmailError('');
+    
+    if (value && !validateEmail(value)) {
+      setEmailError('Please enter a valid email address');
+    }
+  };
+
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!email) {
-      toast({
-        title: 'Email required',
-        description: 'Please enter your email address',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
+      setEmailError('Email address is required');
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      setEmailError('Please enter a valid email address');
       return;
     }
 
     try {
       setIsLoading(true);
+      setEmailError('');
+      
       const result = await loginWithEmail(email);
       
       if (result.success) {
+        setEmailSent(true);
         toast({
-          title: 'Check your email',
-          description: 'We sent you a magic link to sign in. Click the link in your email to complete authentication.',
+          title: 'Magic Link Sent! 📧',
+          description: 'Check your email and click the link to sign in.',
           status: 'success',
           duration: 10000,
           isClosable: true,
+          position: 'top',
         });
-        // Note: The user will be redirected when they click the magic link in their email
-        // and return to the application
       } else {
+        setEmailError(result.error || 'Failed to send magic link');
         toast({
           title: 'Login failed',
           description: result.error || 'Failed to send magic link',
@@ -79,9 +104,11 @@ const Login: React.FC = () => {
       }
     } catch (error) {
       console.error('Email login error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send magic link';
+      setEmailError(errorMessage);
       toast({
         title: 'Login failed',
-        description: error instanceof Error ? error.message : 'Failed to send magic link',
+        description: errorMessage,
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -89,6 +116,11 @@ const Login: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleResendEmail = async () => {
+    setEmailSent(false);
+    setEmail('');
   };
 
   const handleMetaMaskConnect = async () => {
@@ -178,33 +210,77 @@ const Login: React.FC = () => {
                 Secure, passwordless authentication
               </Text>
 
-              <form onSubmit={handleEmailLogin} style={{ width: '100%' }}>
-                <VStack spacing={4} w="full">
-                  <FormControl isRequired>
-                    <FormLabel>Email Address</FormLabel>
-                    <Input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Enter your email address"
-                      size="lg"
-                      bg="white"
-                    />
-                  </FormControl>
+              {!emailSent ? (
+                <form onSubmit={handleEmailLogin} style={{ width: '100%' }}>
+                  <VStack spacing={4} w="full">
+                    <FormControl isRequired isInvalid={!!emailError}>
+                      <FormLabel>Email Address</FormLabel>
+                      <Input
+                        type="email"
+                        value={email}
+                        onChange={handleEmailChange}
+                        placeholder="Enter your email address"
+                        size="lg"
+                        bg="white"
+                        autoComplete="email"
+                        isDisabled={isLoading}
+                      />
+                      {emailError && (
+                        <FormErrorMessage>{emailError}</FormErrorMessage>
+                      )}
+                    </FormControl>
 
-                  <Button
-                    type="submit"
-                    colorScheme="blue"
-                    size="lg"
-                    width="full"
-                    isLoading={isLoading}
-                    loadingText="Sending magic link..."
-                    leftIcon={<Text>📧</Text>}
+                    <Button
+                      type="submit"
+                      colorScheme="blue"
+                      size="lg"
+                      width="full"
+                      isLoading={isLoading}
+                      loadingText="Sending magic link..."
+                      leftIcon={<EmailIcon />}
+                      isDisabled={!email || !!emailError}
+                    >
+                      Send Magic Link
+                    </Button>
+                  </VStack>
+                </form>
+              ) : (
+                <VStack spacing={4}>
+                  <Alert
+                    status="success"
+                    variant="subtle"
+                    flexDirection="column"
+                    alignItems="center"
+                    justifyContent="center"
+                    textAlign="center"
+                    height="200px"
+                    borderRadius="md"
                   >
-                    Send Magic Link
-                  </Button>
+                    <AlertIcon boxSize="40px" mr={0} />
+                    <AlertTitle mt={4} mb={1} fontSize="lg">
+                      Check Your Email!
+                    </AlertTitle>
+                    <AlertDescription maxWidth="sm">
+                      We've sent a magic link to <strong>{email}</strong>.
+                      Click the link in your email to complete sign in.
+                    </AlertDescription>
+                  </Alert>
+
+                  <VStack spacing={2} w="full">
+                    <Text fontSize="sm" color="gray.600">
+                      Didn't receive the email?
+                    </Text>
+                    <Button
+                      variant="outline"
+                      colorScheme="blue"
+                      size="sm"
+                      onClick={handleResendEmail}
+                    >
+                      Try Again with Different Email
+                    </Button>
+                  </VStack>
                 </VStack>
-              </form>
+              )}
             </VStack>
           </CardBody>
         </Card>
