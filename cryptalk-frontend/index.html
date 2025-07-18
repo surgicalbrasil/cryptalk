@@ -6,30 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CrypTalk - Enhanced Modular Web3 Platform</title>
     
-    <!-- Logger polyfill - Must be loaded before any other scripts -->
-    <script src="/logger-polyfill.js"></script>
-    <script>
-      // Additional inline logger definition for maximum compatibility
-      if (typeof logger === 'undefined') {
-        window.logger = {
-          log: function() { console.log.apply(console, arguments); },
-          warn: function() { console.warn.apply(console, arguments); },
-          error: function() { console.error.apply(console, arguments); },
-          info: function() { console.info.apply(console, arguments); },
-          debug: function() { console.debug.apply(console, arguments); }
-        };
-      }
-      
-      // Ensure logger is available in global scope
-      if (typeof window !== 'undefined' && window.logger) {
-        try {
-          // CSP-safe approach - no eval needed
-          window.logger = window.logger;
-        } catch (e) {
-          // Fallback already handled above
-        }
-      }
-    </script>
   </head>
   <body>
     <div id="root"></div>
