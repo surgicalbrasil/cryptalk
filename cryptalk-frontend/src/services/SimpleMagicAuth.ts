@@ -10,7 +10,7 @@ const initMagic = () => {
   return magic;
 };
 
-// Simple magic link auth
+// Simple magic link auth - with proper popup
 export const sendMagicLink = async (email: string): Promise<{ success: boolean; error?: string }> => {
   try {
     const magicInstance = initMagic();
@@ -18,7 +18,13 @@ export const sendMagicLink = async (email: string): Promise<{ success: boolean; 
       return { success: false, error: 'Magic not initialized' };
     }
 
-    await magicInstance.auth.loginWithMagicLink({ email });
+    // This will show the Magic Link popup and handle the flow
+    const didToken = await magicInstance.auth.loginWithMagicLink({ 
+      email,
+      showUI: true // This shows the proper Magic Link popup
+    });
+    
+    console.log('Magic Link completed, DID token received:', !!didToken);
     return { success: true };
   } catch (error) {
     console.error('Magic link error:', error);

@@ -4,6 +4,7 @@ import web3StorageService from '../services/Web3StorageService';
 import type { ConnectionStatus } from '../services/Web3StorageService';
 // Removed messaging and payment services for simplified data room
 import MagicLinkAuthService, { type AuthUser } from '../services/MagicLinkAuthService';
+import { sendMagicLink, isLoggedIn, getUserInfo } from '../services/SimpleMagicAuth';
 import { TEST_MODE, MOCK_USER, TEST_CONFIG } from '../config/testMode';
 
 interface AuthResult {
@@ -260,23 +261,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoginError(null);
     
     try {
-      // Simple implementation - just simulate success
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Use real Magic Link
+      const result = await sendMagicLink(email);
       
-      const authUser = {
-        email: email,
-        publicAddress: '',
-        isLoggedIn: false, // Will be true when user clicks magic link
-        walletConnected: false
-      };
-      
-      setUser(authUser);
-      setIsEmailAuthenticated(false); // Will be true when user clicks magic link
-      setIsWalletConnected(false);
-      setIsAuthenticated(false);
-      setIsInitialized(true);
-      
-      return { success: true };
+      if (result.success) {
+        // User completed Magic Link flow, get user info
+        const userInfo = await getUserInfo();
+        
+        const authUser = {
+          email: userInfo?.email || email,
+          publicAddress: userInfo?.publicAddress || '',
+          isLoggedIn: true,
+          walletConnected: false
+        };
+        
+        setUser(authUser);
+        setIsEmailAuthenticated(true);
+        setIsWalletConnected(false);
+        setIsAuthenticated(true);
+        setIsInitialized(true);
+        
+        return { success: true };
+      } else {
+        return { success: false, error: result.error };
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Email login failed';
       console.error('Magic Link login error:', errorMessage);

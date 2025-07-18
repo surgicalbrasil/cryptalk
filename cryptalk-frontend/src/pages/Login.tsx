@@ -29,14 +29,14 @@ import {
 import { CheckCircleIcon, EmailIcon } from '@chakra-ui/icons';
 import { useAuth } from '../contexts/AuthContext';
 import AppConfig from '../config/AppConfig';
+import { sendMagicLink } from '../services/SimpleMagicAuth';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
-  const [emailSent, setEmailSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isMetaMaskLoading, setIsMetaMaskLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
-  const { loginWithEmail, isEmailAuthenticated, isInitialized, connectWallet } = useAuth();
+  const { isEmailAuthenticated, isInitialized } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
 
@@ -80,20 +80,32 @@ const Login: React.FC = () => {
       setIsLoading(true);
       setEmailError('');
       
-      // Simple approach - just show success message
-      // In a real app, you'd send the email here
-      setTimeout(() => {
-        setEmailSent(true);
+      // Use real Magic Link with popup
+      const result = await sendMagicLink(email);
+      
+      if (result.success) {
+        // User completed the Magic Link flow
         toast({
-          title: 'Magic Link Sent! 📧',
-          description: 'Check your email and click the link to sign in.',
+          title: 'Login Successful! 🎉',
+          description: 'You have been authenticated successfully.',
           status: 'success',
-          duration: 10000,
+          duration: 5000,
           isClosable: true,
           position: 'top',
         });
-        setIsLoading(false);
-      }, 1000);
+        
+        // Navigate to dashboard
+        navigate('/dashboard');
+      } else {
+        setEmailError(result.error || 'Failed to authenticate');
+        toast({
+          title: 'Authentication failed',
+          description: result.error || 'Failed to authenticate',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      }
       
     } catch (error) {
       console.error('Email login error:', error);
@@ -110,10 +122,6 @@ const Login: React.FC = () => {
     }
   };
 
-  const handleResendEmail = async () => {
-    setEmailSent(false);
-    setEmail('');
-  };
 
   const handleMetaMaskConnect = async () => {
     try {
@@ -202,77 +210,39 @@ const Login: React.FC = () => {
                 Secure, passwordless authentication
               </Text>
 
-              {!emailSent ? (
-                <form onSubmit={handleEmailLogin} style={{ width: '100%' }}>
-                  <VStack spacing={4} w="full">
-                    <FormControl isRequired isInvalid={!!emailError}>
-                      <FormLabel>Email Address</FormLabel>
-                      <Input
-                        type="email"
-                        value={email}
-                        onChange={handleEmailChange}
-                        placeholder="Enter your email address"
-                        size="lg"
-                        bg="white"
-                        autoComplete="email"
-                        isDisabled={isLoading}
-                      />
-                      {emailError && (
-                        <FormErrorMessage>{emailError}</FormErrorMessage>
-                      )}
-                    </FormControl>
-
-                    <Button
-                      type="submit"
-                      colorScheme="blue"
+              <form onSubmit={handleEmailLogin} style={{ width: '100%' }}>
+                <VStack spacing={4} w="full">
+                  <FormControl isRequired isInvalid={!!emailError}>
+                    <FormLabel>Email Address</FormLabel>
+                    <Input
+                      type="email"
+                      value={email}
+                      onChange={handleEmailChange}
+                      placeholder="Enter your email address"
                       size="lg"
-                      width="full"
-                      isLoading={isLoading}
-                      loadingText="Sending magic link..."
-                      leftIcon={<EmailIcon />}
-                      isDisabled={!email || !!emailError}
-                    >
-                      Send Magic Link
-                    </Button>
-                  </VStack>
-                </form>
-              ) : (
-                <VStack spacing={4}>
-                  <Alert
-                    status="success"
-                    variant="subtle"
-                    flexDirection="column"
-                    alignItems="center"
-                    justifyContent="center"
-                    textAlign="center"
-                    height="200px"
-                    borderRadius="md"
-                  >
-                    <AlertIcon boxSize="40px" mr={0} />
-                    <AlertTitle mt={4} mb={1} fontSize="lg">
-                      Check Your Email!
-                    </AlertTitle>
-                    <AlertDescription maxWidth="sm">
-                      We've sent a magic link to <strong>{email}</strong>.
-                      Click the link in your email to complete sign in.
-                    </AlertDescription>
-                  </Alert>
+                      bg="white"
+                      autoComplete="email"
+                      isDisabled={isLoading}
+                    />
+                    {emailError && (
+                      <FormErrorMessage>{emailError}</FormErrorMessage>
+                    )}
+                  </FormControl>
 
-                  <VStack spacing={2} w="full">
-                    <Text fontSize="sm" color="gray.600">
-                      Didn't receive the email?
-                    </Text>
-                    <Button
-                      variant="outline"
-                      colorScheme="blue"
-                      size="sm"
-                      onClick={handleResendEmail}
-                    >
-                      Try Again with Different Email
-                    </Button>
-                  </VStack>
+                  <Button
+                    type="submit"
+                    colorScheme="blue"
+                    size="lg"
+                    width="full"
+                    isLoading={isLoading}
+                    loadingText="Opening Magic Link..."
+                    leftIcon={<EmailIcon />}
+                    isDisabled={!email || !!emailError}
+                  >
+                    Send Magic Link
+                  </Button>
                 </VStack>
-              )}
+              </form>
             </VStack>
           </CardBody>
         </Card>
