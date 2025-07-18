@@ -1,39 +1,46 @@
 version: '3.8'
 
 services:
-  # Serviço principal do Claude Code
-  claude-service:
-    build:
+  # Claude Service Orchestrator
+  claude-orchestrator:
+    build: 
       context: ./claude-service
       dockerfile: Dockerfile
-    container_name: claude-code-main
+    image: claude-orchestrator:latest
+    container_name: claude-orchestrator
     restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "8080:8080"
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - DOCKER_SOCKET=/var/run/docker.sock
-    ports:
-      - "3000:3000"
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - MAX_CONTAINERS=20
+      - CONTAINER_TIMEOUT=30m
     volumes:
-      - ./claude-service/uploads:/app/uploads
-      - ./claude-service/logs:/app/logs
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - claude-data:/app/data
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+      - claude-config:/app/config
     networks:
       - claude-network
     depends_on:
       - redis
+      - postgres
     healthcheck:
       test: ["CMD", "node", "health-check.js"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 15s
     deploy:
       resources:
         limits:
           cpus: '2.0'
-          memory: 2G
+          memory: 1G
         reservations:
           cpus: '0.5'
           memory: 512M
@@ -45,117 +52,165 @@ services:
       - CHOWN
       - SETUID
       - SETGID
-    user: "1001:1001"
+    user: "1001:998"
 
-  # Serviço de monitoramento
+  # Serviço de monitoramento completo
   monitoring:
     build:
       context: ./monitoring
       dockerfile: Dockerfile
-    container_name: claude-code-monitoring
+    container_name: cryptalk-monitoring
     restart: unless-stopped
     ports:
-      - "9090:9090"
-    networks:
-      - claude-network
-    depends_on:
-      - claude-service
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.1'
-          memory: 128M
-
-  # Nginx como reverse proxy
-  nginx:
-    image: nginx:alpine
-    container_name: claude-code-nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
+      - "3003:3003"  # Dashboard e API
+      - "9090:9090"  # Métricas Prometheus
+    environment:
+      - NODE_ENV=production
+      - LOG_LEVEL=info
+      - MONITORING_PORT=3003
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=claude_db
+      - POSTGRES_USER=claude_user
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-claude_password}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-defaultpassword}
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - ELASTICSEARCH_ENABLED=true
+      - PROMETHEUS_URL=http://prometheus:9090
+      - GRAFANA_URL=http://grafana:3000
+      - ALERT_EMAIL_ENABLED=${ALERT_EMAIL_ENABLED:-false}
+      - ALERT_SLACK_ENABLED=${ALERT_SLACK_ENABLED:-false}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - ALERT_EMAIL_FROM=${ALERT_EMAIL_FROM}
+      - ALERT_EMAIL_TO=${ALERT_EMAIL_TO}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - SLACK_CHANNEL=${SLACK_CHANNEL:-#alerts}
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/ssl:ro
-      - ./nginx/logs:/var/log/nginx
-      - ./nginx/static:/var/www/claude-code/static:ro
-      - ./nginx/errors:/var/www/claude-code/errors:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./monitoring/logs:/app/logs
+      - ./monitoring/config:/app/config
+      - monitoring-data:/app/data
     networks:
       - claude-network
     depends_on:
-      - claude-service
-      - monitoring
+      - claude-orchestrator
+      - redis
+      - postgres
+      - prometheus
+      - grafana
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/nginx-health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 256M
+          cpus: '1.0'
+          memory: 1G
         reservations:
-          cpus: '0.1'
-          memory: 64M
+          cpus: '0.2'
+          memory: 256M
+    security_opt:
+      - no-new-privileges:true
+    labels:
+      - "prometheus.io/scrape=true"
+      - "prometheus.io/port=9090"
+      - "prometheus.io/path=/metrics"
 
   # Redis para cache e sessões
   redis:
     image: redis:7-alpine
-    container_name: claude-code-redis
+    container_name: claude-redis
     restart: unless-stopped
-    command: >
-      redis-server 
-      --appendonly yes 
-      --maxmemory 256mb 
-      --maxmemory-policy allkeys-lru
-      --requirepass ${REDIS_PASSWORD:-defaultpassword}
     ports:
       - "6379:6379"
     volumes:
       - redis-data:/data
     networks:
       - claude-network
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --requirepass ${REDIS_PASSWORD:-defaultpassword}
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
       retries: 3
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
-        reservations:
-          cpus: '0.1'
-          memory: 64M
 
-  # PostgreSQL para metadados (opcional)
+  # PostgreSQL para persistência
   postgres:
     image: postgres:15-alpine
-    container_name: claude-code-postgres
+    container_name: claude-postgres
     restart: unless-stopped
-    environment:
-      - POSTGRES_DB=${DB_NAME:-claude_code}
-      - POSTGRES_USER=${DB_USER:-claude_user}
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-secure_password}
     ports:
       - "5432:5432"
+    environment:
+      - POSTGRES_DB=claude_db
+      - POSTGRES_USER=claude_user
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-claude_password}
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./claude-service/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - claude-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-claude_user} -d ${DB_NAME:-claude_code}"]
+      test: ["CMD-SHELL", "pg_isready -U claude_user -d claude_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Nginx para load balancing e SSL
+  nginx:
+    image: nginx:alpine
+    container_name: claude-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - claude-logs:/var/log/nginx
+    networks:
+      - claude-network
+    depends_on:
+      - claude-orchestrator
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus para métricas
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: claude-prometheus
+    restart: unless-stopped
+    ports:
+      - "9091:9090"  # Mudando porta para evitar conflito
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    networks:
+      - claude-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.external-url=http://localhost:9091'
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -163,59 +218,36 @@ services:
       resources:
         limits:
           cpus: '1.0'
-          memory: 512M
+          memory: 1G
         reservations:
           cpus: '0.2'
-          memory: 128M
-
-  # Prometheus para métricas
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: claude-code-prometheus
-    restart: unless-stopped
-    ports:
-      - "9091:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus-data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
-      - '--web.console.templates=/usr/share/prometheus/consoles'
-      - '--web.enable-lifecycle'
-      - '--storage.tsdb.retention.time=7d'
-    networks:
-      - claude-network
-    depends_on:
-      - monitoring
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.1'
-          memory: 128M
+          memory: 256M
 
   # Grafana para visualização
   grafana:
     image: grafana/grafana:latest
-    container_name: claude-code-grafana
+    container_name: claude-grafana
     restart: unless-stopped
     ports:
       - "3001:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource,grafana-piechart-panel
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/overview.json
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ./grafana/provisioning:/etc/grafana/provisioning
     networks:
       - claude-network
     depends_on:
       - prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     deploy:
       resources:
         limits:
@@ -225,41 +257,48 @@ services:
           cpus: '0.1'
           memory: 128M
 
-  # Watchtower para atualizações automáticas
+  # Watchtower para auto-updates
   watchtower:
-    image: containrrr/watchtower
-    container_name: claude-code-watchtower
+    image: containrrr/watchtower:latest
+    container_name: claude-watchtower
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - WATCHTOWER_CLEANUP=true
-      - WATCHTOWER_POLL_INTERVAL=3600
       - WATCHTOWER_INCLUDE_STOPPED=true
+      - WATCHTOWER_SCHEDULE=0 0 4 * * *  # 4 AM daily
     networks:
       - claude-network
-    deploy:
-      resources:
-        limits:
-          cpus: '0.1'
-          memory: 64M
 
 networks:
   claude-network:
     driver: bridge
+    name: claude-network
     ipam:
       driver: default
       config:
         - subnet: 172.20.0.0/16
 
 volumes:
-  claude-data:
+  claude-logs:
     driver: local
+    name: claude-logs
+  claude-config:
+    driver: local
+    name: claude-config
   redis-data:
     driver: local
+    name: claude-redis-data
   postgres-data:
     driver: local
+    name: claude-postgres-data
   prometheus-data:
     driver: local
+    name: claude-prometheus-data
   grafana-data:
     driver: local
+    name: claude-grafana-data
+  monitoring-data:
+    driver: local
+    name: claude-monitoring-data

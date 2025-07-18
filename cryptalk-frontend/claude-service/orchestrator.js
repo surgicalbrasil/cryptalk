@@ -1,671 +1,1390 @@
 const express = require('express');
-const multer = require('multer');
 const Docker = require('dockerode');
-const winston = require('winston');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const helmet = require('helmet');
-const cors = require('cors');
-const rateLimit = require('rate-limiter-flexible');
-const { body, validationResult } = require('express-validator');
-const fs = require('fs-extra');
-const path = require('path');
 const { v4: uuidv4 } = require('uuid');
-const archiver = require('archiver');
-const yauzl = require('yauzl');
-const sharp = require('sharp');
-const pdfParse = require('pdf-parse');
-const mammoth = require('mammoth');
-const cron = require('node-cron');
-const http = require('http');
-const socketIo = require('socket.io');
+const path = require('path');
+const fs = require('fs').promises;
+const cors = require('cors');
+const WebSocket = require('ws');
+const rateLimit = require('express-rate-limit');
+
+// Carregar variáveis de ambiente
 require('dotenv').config();
 
-class ClaudeCodeOrchestrator {
+const app = express();
+const PORT = process.env.PORT || 3000;
+const docker = new Docker();
+
+// Middleware
+app.use(cors({
+  origin: function (origin, callback) {
+    // Permitir requisições sem origin (mobile apps, etc.)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'https://localhost:3000',
+      'https://localhost:5173'
+    ];
+    
+    // Suporte a tunnel Cloudflare
+    if (process.env.TUNNEL_URL) {
+      allowedOrigins.push(process.env.TUNNEL_URL);
+    }
+    
+    // Permitir domínios do Cloudflare Tunnel
+    if (origin.includes('trycloudflare.com') || 
+        origin.includes('vercel.app') || 
+        origin.includes('github.io') ||
+        origin.includes('netlify.app') ||
+        allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
+
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.static(path.join(__dirname, '../dist')));
+
+// Rate limiting
+const createRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 10, // Limite de 10 criações por IP por 15 minutos
+  message: { error: 'Muitas solicitações de criação de containers. Tente novamente em 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const generalRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 100, // Limite de 100 requests por IP por 15 minutos
+  message: { error: 'Muitas solicitações. Tente novamente em 15 minutos.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Aplicar rate limiting geral
+app.use('/api/', generalRateLimit);
+
+// Middleware de logging
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - IP: ${req.ip}`);
+  next();
+});
+
+// Middleware de tratamento de erros
+app.use((err, req, res, next) => {
+  console.error(`❌ Erro no servidor:`, err);
+  
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({ error: 'Dados inválidos', details: err.message });
+  }
+  
+  if (err.name === 'UnauthorizedError') {
+    return res.status(401).json({ error: 'Não autorizado' });
+  }
+  
+  res.status(500).json({ error: 'Erro interno do servidor' });
+});
+
+// WebSocket Server
+const wss = new WebSocket.Server({ port: 8080 });
+const clientConnections = new Map();
+
+// Configurações do container
+const CONTAINER_CONFIG = {
+  image: 'claude-user-env:latest',
+  networkMode: 'claude-network',
+  restartPolicy: { Name: 'unless-stopped' },
+  hostConfig: {
+    memory: 512 * 1024 * 1024, // 512MB
+    memorySwap: 512 * 1024 * 1024, // Sem swap
+    cpuPeriod: 100000,
+    cpuQuota: 50000, // 50% CPU
+    pidsLimit: 100, // Limite de processos
+    securityOpt: [
+      'no-new-privileges:true',
+      'seccomp:unconfined', // Para permitir execução de código
+      'apparmor:unconfined'
+    ],
+    capDrop: ['ALL'],
+    capAdd: ['CHOWN', 'SETUID', 'SETGID', 'DAC_OVERRIDE'],
+    readonlyRootfs: false,
+    tmpfs: {
+      '/tmp': 'size=200m,noexec,nosuid,nodev',
+      '/run': 'size=100m,noexec,nosuid,nodev',
+      '/var/tmp': 'size=100m,noexec,nosuid,nodev'
+    },
+    ulimits: [
+      { Name: 'nofile', Soft: 1024, Hard: 2048 },
+      { Name: 'nproc', Soft: 100, Hard: 200 }
+    ]
+  },
+  env: [
+    'NODE_ENV=production',
+    'CLAUDE_API_KEY=' + process.env.CLAUDE_API_KEY,
+    'CONTAINER_MODE=isolated',
+    'DEBIAN_FRONTEND=noninteractive'
+  ]
+};
+
+// Configurações de recursos por tipo de análise
+const RESOURCE_CONFIGS = {
+  light: {
+    memory: 256 * 1024 * 1024, // 256MB
+    cpuQuota: 25000 // 25% CPU
+  },
+  medium: {
+    memory: 512 * 1024 * 1024, // 512MB
+    cpuQuota: 50000 // 50% CPU
+  },
+  heavy: {
+    memory: 1024 * 1024 * 1024, // 1GB
+    cpuQuota: 100000 // 100% CPU
+  }
+};
+
+// Configurações de monitoramento
+const MONITORING_CONFIG = {
+  statsInterval: 5000, // 5 segundos
+  alertThresholds: {
+    cpu: 80, // 80% CPU
+    memory: 85, // 85% memória
+    disk: 90, // 90% disco
+    networkRx: 100 * 1024 * 1024, // 100MB/s
+    networkTx: 100 * 1024 * 1024  // 100MB/s
+  },
+  historySize: 100, // Manter 100 pontos de dados históricos
+  alertCooldown: 5 * 60 * 1000 // 5 minutos entre alertas similares
+};
+
+// Gerenciador de containers por cliente
+class ClientContainerManager {
   constructor() {
-    this.app = express();
-    this.server = http.createServer(this.app);
-    this.io = socketIo(this.server, {
-      cors: {
-        origin: process.env.CLIENT_URL || "http://localhost:3000",
-        methods: ["GET", "POST"]
+    this.activeContainers = new Map();
+    this.containerTimeouts = new Map();
+    this.containerStats = new Map();
+    this.containerHistory = new Map();
+    this.alertHistory = new Map();
+    this.maxContainerAge = 30 * 60 * 1000; // 30 minutos
+    this.maxConcurrentContainers = 10;
+    this.totalContainersCreated = 0;
+    this.totalContainersDestroyed = 0;
+    this.setupMonitoring();
+  }
+
+  setupMonitoring() {
+    // Monitoramento de recursos em tempo real
+    setInterval(async () => {
+      await this.monitorContainers();
+    }, MONITORING_CONFIG.statsInterval);
+
+    // Limpeza de estatísticas antigas
+    setInterval(() => {
+      this.cleanupOldStats();
+    }, 60000); // A cada minuto
+  }
+
+  async monitorContainers() {
+    for (const [clientId, containerInfo] of this.activeContainers.entries()) {
+      try {
+        const stats = await this.getContainerStats(clientId);
+        if (stats) {
+          this.containerStats.set(clientId, {
+            ...stats,
+            timestamp: Date.now()
+          });
+          
+          // Verificar alertas
+          await this.checkResourceAlerts(clientId, stats);
+        }
+      } catch (error) {
+        console.error(`❌ Erro ao monitorar container ${clientId}:`, error);
       }
-    });
-    
-    this.docker = new Docker();
-    this.userContainers = new Map();
-    this.processingJobs = new Map();
-    
-    this.initializeLogger();
-    this.initializeMiddleware();
-    this.initializeRateLimiting();
-    this.initializeStorage();
-    this.initializeRoutes();
-    this.initializeWebSocket();
-    this.initializeCleanupTasks();
+    }
   }
 
-  initializeLogger() {
-    this.logger = winston.createLogger({
-      level: 'info',
-      format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.errors({ stack: true }),
-        winston.format.json()
-      ),
-      transports: [
-        new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-        new winston.transports.File({ filename: 'logs/combined.log' }),
-        new winston.transports.Console({
-          format: winston.format.simple()
-        })
-      ]
+  async checkResourceAlerts(clientId, stats) {
+    const alerts = [];
+    const now = Date.now();
+    
+    // Verificar CPU
+    if (stats.cpu > MONITORING_CONFIG.alertThresholds.cpu) {
+      alerts.push({
+        type: 'cpu_high',
+        message: `CPU alta: ${stats.cpu.toFixed(2)}%`,
+        value: stats.cpu,
+        threshold: MONITORING_CONFIG.alertThresholds.cpu
+      });
+    }
+    
+    // Verificar memória
+    if (stats.memory > MONITORING_CONFIG.alertThresholds.memory) {
+      alerts.push({
+        type: 'memory_high',
+        message: `Memória alta: ${stats.memory.toFixed(2)}%`,
+        value: stats.memory,
+        threshold: MONITORING_CONFIG.alertThresholds.memory
+      });
+    }
+    
+    // Verificar rede
+    if (stats.network.rx > MONITORING_CONFIG.alertThresholds.networkRx) {
+      alerts.push({
+        type: 'network_rx_high',
+        message: `Tráfego de rede RX alto: ${(stats.network.rx / 1024 / 1024).toFixed(2)} MB/s`,
+        value: stats.network.rx,
+        threshold: MONITORING_CONFIG.alertThresholds.networkRx
+      });
+    }
+    
+    if (stats.network.tx > MONITORING_CONFIG.alertThresholds.networkTx) {
+      alerts.push({
+        type: 'network_tx_high',
+        message: `Tráfego de rede TX alto: ${(stats.network.tx / 1024 / 1024).toFixed(2)} MB/s`,
+        value: stats.network.tx,
+        threshold: MONITORING_CONFIG.alertThresholds.networkTx
+      });
+    }
+    
+    // Processar alertas com cooldown
+    for (const alert of alerts) {
+      const alertKey = `${clientId}_${alert.type}`;
+      const lastAlert = this.alertHistory.get(alertKey);
+      
+      if (!lastAlert || now - lastAlert > MONITORING_CONFIG.alertCooldown) {
+        console.warn(`⚠️  Alerta para container ${clientId}: ${alert.message}`);
+        
+        sendToClient(clientId, {
+          type: 'resource_alert',
+          alert: alert,
+          timestamp: now
+        });
+        
+        this.alertHistory.set(alertKey, now);
+      }
+    }
+    
+    // Armazenar histórico de estatísticas
+    if (!this.containerHistory.has(clientId)) {
+      this.containerHistory.set(clientId, []);
+    }
+    
+    const history = this.containerHistory.get(clientId);
+    history.push({
+      ...stats,
+      timestamp: now
     });
+    
+    // Limitar tamanho do histórico
+    if (history.length > MONITORING_CONFIG.historySize) {
+      history.shift();
+    }
   }
 
-  initializeMiddleware() {
-    this.app.use(helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          scriptSrc: ["'self'"],
-          imgSrc: ["'self'", "data:", "https:"],
+  cleanupOldStats() {
+    const now = Date.now();
+    const maxAge = 10 * 60 * 1000; // 10 minutos
+    
+    for (const [clientId, stats] of this.containerStats.entries()) {
+      if (now - stats.timestamp > maxAge) {
+        this.containerStats.delete(clientId);
+      }
+    }
+  }
+
+  async createClientContainer(clientId, resourceType = 'medium') {
+    try {
+      // Verificar limite de containers
+      if (this.activeContainers.size >= this.maxConcurrentContainers) {
+        throw new Error('Limite máximo de containers atingido');
+      }
+
+      const containerName = `claude-user-${clientId}`;
+      
+      // Verificar se container já existe
+      if (this.activeContainers.has(clientId)) {
+        await this.cleanupContainer(clientId);
+      }
+
+      // Criar volumes para o cliente
+      const volumeName = `claude-data-${clientId}`;
+      const uploadsVolume = `claude-uploads-${clientId}`;
+      const logsVolume = `claude-logs-${clientId}`;
+      
+      await this.createVolumes([
+        { name: volumeName, driver: 'local' },
+        { name: uploadsVolume, driver: 'local' },
+        { name: logsVolume, driver: 'local' }
+      ]);
+
+      // Configuração de recursos baseada no tipo
+      const resourceConfig = RESOURCE_CONFIGS[resourceType] || RESOURCE_CONFIGS.medium;
+      
+      // Configuração do container
+      const config = {
+        ...CONTAINER_CONFIG,
+        name: containerName,
+        Labels: {
+          'com.crystalk.client-id': clientId,
+          'com.crystalk.resource-type': resourceType,
+          'com.crystalk.created-at': Date.now().toString()
         },
-      },
-    }));
-    
-    this.app.use(cors());
-    this.app.use(express.json({ limit: '10mb' }));
-    this.app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-  }
-
-  initializeRateLimiting() {
-    const rateLimiter = new rateLimit.RateLimiterMemory({
-      keyPrefix: 'middleware',
-      points: 10, // Número de requests
-      duration: 60, // Por minuto
-    });
-
-    this.app.use(async (req, res, next) => {
-      try {
-        await rateLimiter.consume(req.ip);
-        next();
-      } catch (rejRes) {
-        res.status(429).json({ error: 'Rate limit exceeded' });
-      }
-    });
-  }
-
-  initializeStorage() {
-    const storage = multer.diskStorage({
-      destination: (req, file, cb) => {
-        const uploadDir = path.join(__dirname, 'uploads', 'pending');
-        fs.ensureDirSync(uploadDir);
-        cb(null, uploadDir);
-      },
-      filename: (req, file, cb) => {
-        const uniqueName = `${uuidv4()}-${file.originalname}`;
-        cb(null, uniqueName);
-      }
-    });
-
-    this.upload = multer({
-      storage,
-      limits: {
-        fileSize: 100 * 1024 * 1024, // 100MB
-        files: 10
-      },
-      fileFilter: (req, file, cb) => {
-        const allowedTypes = [
-          'application/pdf',
-          'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'text/plain',
-          'text/csv',
-          'application/json',
-          'image/jpeg',
-          'image/png',
-          'image/gif',
-          'application/zip',
-          'application/x-zip-compressed'
-        ];
-        
-        if (allowedTypes.includes(file.mimetype)) {
-          cb(null, true);
-        } else {
-          cb(new Error('Tipo de arquivo não permitido'), false);
-        }
-      }
-    });
-  }
-
-  initializeRoutes() {
-    // Health check
-    this.app.get('/health', (req, res) => {
-      res.json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        containers: this.userContainers.size,
-        jobs: this.processingJobs.size
-      });
-    });
-
-    // Upload de documentos
-    this.app.post('/upload', 
-      this.upload.array('documents', 10),
-      [
-        body('userId').isString().notEmpty(),
-        body('projectId').isString().notEmpty()
-      ],
-      async (req, res) => {
-        try {
-          const errors = validationResult(req);
-          if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-          }
-
-          const { userId, projectId } = req.body;
-          const files = req.files;
-
-          if (!files || files.length === 0) {
-            return res.status(400).json({ error: 'Nenhum arquivo enviado' });
-          }
-
-          const jobId = uuidv4();
-          const job = {
-            id: jobId,
-            userId,
-            projectId,
-            files: files.map(f => ({
-              original: f.originalname,
-              path: f.path,
-              size: f.size,
-              mimetype: f.mimetype
-            })),
-            status: 'pending',
-            createdAt: new Date(),
-            progress: 0
-          };
-
-          this.processingJobs.set(jobId, job);
-
-          // Processar assincronamente
-          this.processDocuments(jobId).catch(err => {
-            this.logger.error('Erro no processamento:', err);
-            job.status = 'failed';
-            job.error = err.message;
-          });
-
-          res.json({
-            jobId,
-            message: 'Upload realizado com sucesso',
-            filesCount: files.length
-          });
-
-        } catch (error) {
-          this.logger.error('Erro no upload:', error);
-          res.status(500).json({ error: 'Erro interno do servidor' });
-        }
-      }
-    );
-
-    // Status do job
-    this.app.get('/job/:jobId/status', async (req, res) => {
-      try {
-        const { jobId } = req.params;
-        const job = this.processingJobs.get(jobId);
-        
-        if (!job) {
-          return res.status(404).json({ error: 'Job não encontrado' });
-        }
-
-        res.json({
-          id: job.id,
-          status: job.status,
-          progress: job.progress,
-          createdAt: job.createdAt,
-          completedAt: job.completedAt,
-          error: job.error,
-          results: job.results
-        });
-
-      } catch (error) {
-        this.logger.error('Erro ao buscar status:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
-      }
-    });
-
-    // Processar com Claude
-    this.app.post('/process',
-      [
-        body('jobId').isString().notEmpty(),
-        body('prompt').isString().notEmpty(),
-        body('userId').isString().notEmpty()
-      ],
-      async (req, res) => {
-        try {
-          const errors = validationResult(req);
-          if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-          }
-
-          const { jobId, prompt, userId } = req.body;
-          const job = this.processingJobs.get(jobId);
-
-          if (!job) {
-            return res.status(404).json({ error: 'Job não encontrado' });
-          }
-
-          if (job.status !== 'completed') {
-            return res.status(400).json({ error: 'Job ainda não foi processado' });
-          }
-
-          const result = await this.processWithClaude(userId, job.results, prompt);
-
-          res.json({
-            result,
-            timestamp: new Date().toISOString()
-          });
-
-        } catch (error) {
-          this.logger.error('Erro no processamento Claude:', error);
-          res.status(500).json({ error: 'Erro interno do servidor' });
-        }
-      }
-    );
-
-    // Listar jobs do usuário
-    this.app.get('/jobs/:userId', async (req, res) => {
-      try {
-        const { userId } = req.params;
-        const userJobs = Array.from(this.processingJobs.values())
-          .filter(job => job.userId === userId)
-          .map(job => ({
-            id: job.id,
-            projectId: job.projectId,
-            status: job.status,
-            progress: job.progress,
-            createdAt: job.createdAt,
-            completedAt: job.completedAt,
-            filesCount: job.files.length
-          }));
-
-        res.json(userJobs);
-
-      } catch (error) {
-        this.logger.error('Erro ao listar jobs:', error);
-        res.status(500).json({ error: 'Erro interno do servidor' });
-      }
-    });
-  }
-
-  initializeWebSocket() {
-    this.io.on('connection', (socket) => {
-      this.logger.info('Cliente conectado:', socket.id);
-
-      socket.on('subscribe', (data) => {
-        const { jobId } = data;
-        socket.join(`job-${jobId}`);
-        this.logger.info(`Cliente ${socket.id} inscrito no job ${jobId}`);
-      });
-
-      socket.on('disconnect', () => {
-        this.logger.info('Cliente desconectado:', socket.id);
-      });
-    });
-  }
-
-  async processDocuments(jobId) {
-    const job = this.processingJobs.get(jobId);
-    if (!job) return;
-
-    try {
-      job.status = 'processing';
-      job.progress = 0;
-      this.emitJobUpdate(jobId, job);
-
-      const results = [];
-      const totalFiles = job.files.length;
-
-      for (let i = 0; i < totalFiles; i++) {
-        const file = job.files[i];
-        this.logger.info(`Processando arquivo ${i + 1}/${totalFiles}: ${file.original}`);
-
-        const content = await this.extractContent(file);
-        results.push({
-          filename: file.original,
-          content,
-          size: file.size,
-          type: file.mimetype
-        });
-
-        job.progress = Math.round(((i + 1) / totalFiles) * 100);
-        this.emitJobUpdate(jobId, job);
-
-        // Mover arquivo para pasta de processados
-        const processedDir = path.join(__dirname, 'uploads', 'completed');
-        fs.ensureDirSync(processedDir);
-        const newPath = path.join(processedDir, path.basename(file.path));
-        await fs.move(file.path, newPath);
-      }
-
-      job.status = 'completed';
-      job.completedAt = new Date();
-      job.results = results;
-      this.emitJobUpdate(jobId, job);
-
-      this.logger.info(`Job ${jobId} concluído com sucesso`);
-
-    } catch (error) {
-      this.logger.error(`Erro no processamento do job ${jobId}:`, error);
-      job.status = 'failed';
-      job.error = error.message;
-      this.emitJobUpdate(jobId, job);
-
-      // Mover arquivos para pasta de falhas
-      const failedDir = path.join(__dirname, 'uploads', 'failed');
-      fs.ensureDirSync(failedDir);
-      
-      for (const file of job.files) {
-        if (fs.existsSync(file.path)) {
-          const newPath = path.join(failedDir, path.basename(file.path));
-          await fs.move(file.path, newPath);
-        }
-      }
-    }
-  }
-
-  async extractContent(file) {
-    const filePath = file.path;
-    const mimetype = file.mimetype;
-
-    try {
-      switch (mimetype) {
-        case 'text/plain':
-          return await fs.readFile(filePath, 'utf8');
-
-        case 'application/pdf':
-          const pdfBuffer = await fs.readFile(filePath);
-          const pdfData = await pdfParse(pdfBuffer);
-          return pdfData.text;
-
-        case 'application/msword':
-        case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-          const docBuffer = await fs.readFile(filePath);
-          const docResult = await mammoth.extractRawText({ buffer: docBuffer });
-          return docResult.value;
-
-        case 'image/jpeg':
-        case 'image/png':
-        case 'image/gif':
-          // Para imagens, retornamos metadados
-          const imageBuffer = await fs.readFile(filePath);
-          const metadata = await sharp(imageBuffer).metadata();
-          return `Imagem: ${metadata.width}x${metadata.height}, formato: ${metadata.format}`;
-
-        case 'application/json':
-          const jsonContent = await fs.readFile(filePath, 'utf8');
-          return JSON.stringify(JSON.parse(jsonContent), null, 2);
-
-        case 'text/csv':
-          return await fs.readFile(filePath, 'utf8');
-
-        case 'application/zip':
-        case 'application/x-zip-compressed':
-          return await this.extractZipContents(filePath);
-
-        default:
-          return `Arquivo de tipo ${mimetype} não suportado para extração de conteúdo`;
-      }
-    } catch (error) {
-      this.logger.error(`Erro ao extrair conteúdo de ${file.original}:`, error);
-      return `Erro ao extrair conteúdo: ${error.message}`;
-    }
-  }
-
-  async extractZipContents(zipPath) {
-    return new Promise((resolve, reject) => {
-      const contents = [];
-      
-      yauzl.open(zipPath, { lazyEntries: true }, (err, zipfile) => {
-        if (err) return reject(err);
-
-        zipfile.readEntry();
-        zipfile.on('entry', (entry) => {
-          if (/\/$/.test(entry.fileName)) {
-            // Diretório
-            zipfile.readEntry();
-          } else {
-            // Arquivo
-            contents.push(`Arquivo: ${entry.fileName} (${entry.uncompressedSize} bytes)`);
-            zipfile.readEntry();
-          }
-        });
-
-        zipfile.on('end', () => {
-          resolve(contents.join('\n'));
-        });
-      });
-    });
-  }
-
-  async processWithClaude(userId, documentResults, prompt) {
-    try {
-      // Criar container isolado para o usuário
-      const container = await this.getOrCreateUserContainer(userId);
-      
-      // Preparar contexto dos documentos
-      const context = documentResults.map(doc => ({
-        filename: doc.filename,
-        content: doc.content.substring(0, 10000), // Limitar tamanho
-        type: doc.type
-      }));
-
-      // Simular processamento com Claude
-      // Em produção, aqui seria feita a chamada para a API do Claude
-      const result = {
-        analysis: `Análise baseada no prompt: "${prompt}"`,
-        documents: context.length,
-        summary: this.generateSummary(context),
-        recommendations: this.generateRecommendations(context, prompt),
-        timestamp: new Date().toISOString()
+        Volumes: {
+          '/app/data': {},
+          '/app/uploads': {},
+          '/app/logs': {},
+          '/app/workspace': {}
+        },
+        HostConfig: {
+          ...CONTAINER_CONFIG.hostConfig,
+          Memory: resourceConfig.memory,
+          MemorySwap: resourceConfig.memory,
+          CpuQuota: resourceConfig.cpuQuota,
+          Binds: [
+            `${volumeName}:/app/data`,
+            `${uploadsVolume}:/app/uploads`,
+            `${logsVolume}:/app/logs`
+          ],
+          NetworkMode: 'claude-network',
+          IpcMode: 'private',
+          PidMode: 'private'
+        },
+        Env: [
+          ...CONTAINER_CONFIG.env,
+          `CLIENT_ID=${clientId}`,
+          `CONTAINER_NAME=${containerName}`,
+          `RESOURCE_TYPE=${resourceType}`,
+          `MAX_MEMORY=${resourceConfig.memory}`,
+          `MAX_CPU_QUOTA=${resourceConfig.cpuQuota}`
+        ]
       };
 
-      return result;
-
-    } catch (error) {
-      this.logger.error('Erro no processamento Claude:', error);
-      throw error;
-    }
-  }
-
-  generateSummary(documents) {
-    const totalChars = documents.reduce((sum, doc) => sum + doc.content.length, 0);
-    const fileTypes = [...new Set(documents.map(doc => doc.type))];
-    
-    return `Processados ${documents.length} documentos (${totalChars} caracteres total). Tipos: ${fileTypes.join(', ')}`;
-  }
-
-  generateRecommendations(documents, prompt) {
-    return [
-      'Revisar a estrutura dos documentos',
-      'Considerar consolidar informações similares',
-      'Verificar consistência entre documentos',
-      `Análise focada em: ${prompt.substring(0, 100)}...`
-    ];
-  }
-
-  async getOrCreateUserContainer(userId) {
-    if (this.userContainers.has(userId)) {
-      return this.userContainers.get(userId);
-    }
-
-    try {
-      const container = await this.docker.createContainer({
-        Image: 'alpine:latest',
-        name: `claude-user-${userId}`,
-        Cmd: ['sleep', '3600'],
-        WorkingDir: '/workspace',
-        HostConfig: {
-          Memory: 512 * 1024 * 1024, // 512MB
-          CpuQuota: 50000, // 50% CPU
-          NetworkMode: 'none', // Sem acesso à rede
-          ReadonlyRootfs: true,
-          Tmpfs: {
-            '/tmp': 'rw,size=100m',
-            '/workspace': 'rw,size=100m'
-          }
-        }
-      });
-
+      // Criar container
+      const container = await docker.createContainer(config);
       await container.start();
-      this.userContainers.set(userId, container);
-      
-      // Agendar limpeza após 1 hora
-      setTimeout(() => {
-        this.cleanupUserContainer(userId);
-      }, 3600000);
 
+      // Aguardar container ficar pronto
+      await this.waitForContainer(container);
+
+      // Registrar container ativo
+      this.activeContainers.set(clientId, {
+        container,
+        containerName,
+        volumeName,
+        uploadsVolume,
+        logsVolume,
+        resourceType,
+        createdAt: Date.now(),
+        lastActivity: Date.now()
+      });
+
+      // Configurar timeout
+      this.setupContainerTimeout(clientId);
+
+      // Atualizar métricas
+      this.totalContainersCreated++;
+
+      console.log(`✅ Container criado para cliente ${clientId}: ${containerName} (${resourceType})`);
       return container;
-
     } catch (error) {
-      this.logger.error(`Erro ao criar container para usuário ${userId}:`, error);
+      console.error(`❌ Erro ao criar container para cliente ${clientId}:`, error);
       throw error;
     }
   }
 
-  async cleanupUserContainer(userId) {
-    const container = this.userContainers.get(userId);
-    if (container) {
+  async createVolumes(volumeConfigs) {
+    for (const config of volumeConfigs) {
       try {
-        await container.stop();
-        await container.remove();
-        this.userContainers.delete(userId);
-        this.logger.info(`Container do usuário ${userId} removido`);
-      } catch (error) {
-        this.logger.error(`Erro ao remover container do usuário ${userId}:`, error);
-      }
-    }
-  }
-
-  emitJobUpdate(jobId, job) {
-    this.io.to(`job-${jobId}`).emit('jobUpdate', {
-      id: job.id,
-      status: job.status,
-      progress: job.progress,
-      completedAt: job.completedAt,
-      error: job.error
-    });
-  }
-
-  initializeCleanupTasks() {
-    // Limpeza a cada hora
-    cron.schedule('0 * * * *', () => {
-      this.cleanupOldJobs();
-      this.cleanupOldFiles();
-    });
-
-    // Limpeza de containers órfãos a cada 6 horas
-    cron.schedule('0 */6 * * *', () => {
-      this.cleanupOrphanedContainers();
-    });
-  }
-
-  cleanupOldJobs() {
-    const now = new Date();
-    const maxAge = 24 * 60 * 60 * 1000; // 24 horas
-
-    for (const [jobId, job] of this.processingJobs.entries()) {
-      if (now - job.createdAt > maxAge) {
-        this.processingJobs.delete(jobId);
-        this.logger.info(`Job antigo removido: ${jobId}`);
-      }
-    }
-  }
-
-  async cleanupOldFiles() {
-    const directories = ['completed', 'failed'];
-    const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 dias
-
-    for (const dir of directories) {
-      const dirPath = path.join(__dirname, 'uploads', dir);
-      if (fs.existsSync(dirPath)) {
-        const files = await fs.readdir(dirPath);
-        
-        for (const file of files) {
-          const filePath = path.join(dirPath, file);
-          const stats = await fs.stat(filePath);
-          
-          if (Date.now() - stats.mtime.getTime() > maxAge) {
-            await fs.remove(filePath);
-            this.logger.info(`Arquivo antigo removido: ${filePath}`);
+        await docker.createVolume({ 
+          Name: config.name,
+          Driver: config.driver || 'local',
+          Labels: {
+            'com.crystalk.managed': 'true',
+            'com.crystalk.created-at': Date.now().toString()
           }
+        });
+      } catch (error) {
+        if (!error.message.includes('already exists')) {
+          throw error;
         }
       }
     }
   }
 
-  async cleanupOrphanedContainers() {
-    try {
-      const containers = await this.docker.listContainers({
-        all: true,
-        filters: { name: ['claude-user-'] }
-      });
-
-      for (const containerInfo of containers) {
-        const container = this.docker.getContainer(containerInfo.Id);
-        
-        if (containerInfo.State === 'exited' || containerInfo.State === 'dead') {
-          await container.remove();
-          this.logger.info(`Container órfão removido: ${containerInfo.Names[0]}`);
+  async waitForContainer(container, maxWait = 10000) {
+    const startTime = Date.now();
+    
+    while (Date.now() - startTime < maxWait) {
+      try {
+        const info = await container.inspect();
+        if (info.State.Running) {
+          return true;
         }
+      } catch (error) {
+        // Container ainda não está pronto
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    throw new Error('Container não ficou pronto no tempo limite');
+  }
+
+  async executeInContainer(clientId, command, onData, options = {}) {
+    const containerInfo = this.activeContainers.get(clientId);
+    if (!containerInfo) {
+      throw new Error(`Container não encontrado para cliente ${clientId}`);
+    }
+
+    const { container } = containerInfo;
+    
+    // Atualizar último acesso
+    containerInfo.lastActivity = Date.now();
+    
+    try {
+      // Configuração da execução
+      const execConfig = {
+        Cmd: Array.isArray(command) ? command : ['/bin/sh', '-c', command],
+        AttachStdout: true,
+        AttachStderr: true,
+        AttachStdin: false,
+        Tty: false,
+        WorkingDir: options.workingDir || '/app',
+        Env: options.env || [],
+        User: options.user || 'nodejs'
+      };
+
+      // Criar execução
+      const exec = await container.exec(execConfig);
+      
+      // Executar comando com timeout
+      const timeout = options.timeout || 30000; // 30 segundos
+      const stream = await exec.start({ hijack: true, stdin: false });
+      
+      // Processar saída
+      let output = '';
+      let timeoutHandle;
+      
+      const processOutput = (chunk) => {
+        const data = chunk.toString();
+        output += data;
+        if (onData) onData(data);
+      };
+      
+      // Configurar timeout
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+          reject(new Error(`Timeout de ${timeout}ms excedido`));
+        }, timeout);
+      });
+      
+      // Processar stream
+      const streamPromise = new Promise((resolve, reject) => {
+        stream.on('data', processOutput);
+        stream.on('end', () => resolve(output));
+        stream.on('error', reject);
+      });
+      
+      try {
+        const result = await Promise.race([streamPromise, timeoutPromise]);
+        clearTimeout(timeoutHandle);
+        
+        // Verificar código de saída
+        const inspectResult = await exec.inspect();
+        if (inspectResult.ExitCode !== 0) {
+          throw new Error(`Comando falhou com código ${inspectResult.ExitCode}`);
+        }
+        
+        return result;
+      } catch (error) {
+        clearTimeout(timeoutHandle);
+        throw error;
       }
     } catch (error) {
-      this.logger.error('Erro na limpeza de containers:', error);
+      console.error(`❌ Erro ao executar comando no container ${clientId}:`, error);
+      throw error;
     }
   }
 
-  async start() {
-    const PORT = process.env.PORT || 3000;
-    
-    this.server.listen(PORT, () => {
-      this.logger.info(`Claude Code Orchestrator iniciado na porta ${PORT}`);
-    });
+  async cleanupContainer(clientId, force = false) {
+    const containerInfo = this.activeContainers.get(clientId);
+    if (!containerInfo) return;
 
-    // Graceful shutdown
-    process.on('SIGTERM', () => {
-      this.logger.info('Recebido SIGTERM, iniciando shutdown...');
-      this.shutdown();
-    });
+    const { 
+      container, 
+      containerName, 
+      volumeName, 
+      uploadsVolume, 
+      logsVolume 
+    } = containerInfo;
 
-    process.on('SIGINT', () => {
-      this.logger.info('Recebido SIGINT, iniciando shutdown...');
-      this.shutdown();
-    });
+    try {
+      console.log(`🧹 Iniciando limpeza do container ${containerName}...`);
+      
+      // Parar container
+      try {
+        const info = await container.inspect();
+        if (info.State.Running) {
+          await container.stop({ t: force ? 5 : 10 });
+        }
+      } catch (error) {
+        console.warn(`⚠️  Erro ao parar container ${containerName}:`, error.message);
+      }
+      
+      // Remover container
+      try {
+        await container.remove({ force });
+      } catch (error) {
+        console.warn(`⚠️  Erro ao remover container ${containerName}:`, error.message);
+      }
+      
+      // Remover volumes
+      const volumes = [volumeName, uploadsVolume, logsVolume].filter(Boolean);
+      for (const volume of volumes) {
+        try {
+          await docker.getVolume(volume).remove({ force });
+        } catch (error) {
+          console.warn(`⚠️  Erro ao remover volume ${volume}:`, error.message);
+        }
+      }
+
+      // Limpar timeout
+      if (this.containerTimeouts.has(clientId)) {
+        clearTimeout(this.containerTimeouts.get(clientId));
+        this.containerTimeouts.delete(clientId);
+      }
+
+      // Remover estatísticas
+      this.containerStats.delete(clientId);
+
+      // Remover do registro
+      this.activeContainers.delete(clientId);
+      
+      // Atualizar métricas
+      this.totalContainersDestroyed++;
+      
+      console.log(`✅ Container ${containerName} removido para cliente ${clientId}`);
+    } catch (error) {
+      console.error(`❌ Erro ao limpar container ${clientId}:`, error);
+      if (!force) {
+        // Tentar limpeza forçada
+        console.log(`🔄 Tentando limpeza forçada para ${clientId}...`);
+        await this.cleanupContainer(clientId, true);
+      }
+    }
   }
 
-  async shutdown() {
-    this.logger.info('Iniciando shutdown graceful...');
-    
-    // Fechar servidor
-    this.server.close();
-    
-    // Limpar containers
-    for (const [userId, container] of this.userContainers.entries()) {
-      await this.cleanupUserContainer(userId);
+  setupContainerTimeout(clientId) {
+    // Limpar timeout existente
+    if (this.containerTimeouts.has(clientId)) {
+      clearTimeout(this.containerTimeouts.get(clientId));
     }
+
+    // Configurar novo timeout
+    const timeout = setTimeout(async () => {
+      console.log(`⏰ Timeout atingido para cliente ${clientId}, removendo container`);
+      await this.cleanupContainer(clientId);
+    }, this.maxContainerAge);
+
+    this.containerTimeouts.set(clientId, timeout);
+  }
+
+  async getContainerStatus(clientId) {
+    const containerInfo = this.activeContainers.get(clientId);
+    if (!containerInfo) return null;
+
+    const { container, createdAt, resourceType, lastActivity } = containerInfo;
     
-    this.logger.info('Shutdown concluído');
-    process.exit(0);
+    try {
+      const info = await container.inspect();
+      const stats = this.containerStats.get(clientId);
+      
+      return {
+        id: info.Id,
+        status: info.State.Status,
+        created: createdAt,
+        uptime: Date.now() - createdAt,
+        lastActivity,
+        resourceType,
+        stats: stats ? {
+          cpu: stats.cpu,
+          memory: stats.memory,
+          network: stats.network,
+          disk: stats.disk
+        } : null
+      };
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async getContainerStats(clientId) {
+    const containerInfo = this.activeContainers.get(clientId);
+    if (!containerInfo) return null;
+
+    const { container } = containerInfo;
+    
+    try {
+      const stats = await container.stats({ stream: false });
+      
+      // Calcular CPU
+      const cpuUsage = stats.cpu_stats.cpu_usage.total_usage;
+      const systemUsage = stats.cpu_stats.system_cpu_usage;
+      const preCpuUsage = stats.precpu_stats.cpu_usage.total_usage;
+      const preSystemUsage = stats.precpu_stats.system_cpu_usage;
+      
+      const cpuPercent = ((cpuUsage - preCpuUsage) / (systemUsage - preSystemUsage)) * 100;
+      
+      // Calcular memória
+      const memoryUsage = stats.memory_stats.usage;
+      const memoryLimit = stats.memory_stats.limit;
+      const memoryPercent = (memoryUsage / memoryLimit) * 100;
+      
+      return {
+        cpu: cpuPercent || 0,
+        memory: memoryPercent || 0,
+        memoryUsage: memoryUsage || 0,
+        memoryLimit: memoryLimit || 0,
+        network: {
+          rx: stats.networks?.eth0?.rx_bytes || 0,
+          tx: stats.networks?.eth0?.tx_bytes || 0
+        },
+        disk: {
+          read: stats.blkio_stats.io_service_bytes_recursive?.[0]?.value || 0,
+          write: stats.blkio_stats.io_service_bytes_recursive?.[1]?.value || 0
+        }
+      };
+    } catch (error) {
+      console.error(`❌ Erro ao obter estatísticas do container ${clientId}:`, error);
+      return null;
+    }
+  }
+
+  async listActiveContainers() {
+    const containers = [];
+    for (const [clientId, info] of this.activeContainers.entries()) {
+      const status = await this.getContainerStatus(clientId);
+      if (status) {
+        containers.push({
+          clientId,
+          ...status
+        });
+      }
+    }
+    return containers;
+  }
+
+  async cleanupOldContainers() {
+    const now = Date.now();
+    const toCleanup = [];
+
+    for (const [clientId, info] of this.activeContainers.entries()) {
+      if (now - info.createdAt > this.maxContainerAge) {
+        toCleanup.push(clientId);
+      }
+    }
+
+    for (const clientId of toCleanup) {
+      await this.cleanupContainer(clientId);
+    }
+
+    return toCleanup.length;
+  }
+
+  async writeFileToContainer(clientId, filePath, content) {
+    const containerInfo = this.activeContainers.get(clientId);
+    if (!containerInfo) {
+      throw new Error(`Container não encontrado para cliente ${clientId}`);
+    }
+
+    const { container } = containerInfo;
+    
+    try {
+      // Criar diretório se necessário
+      const dirPath = path.dirname(filePath);
+      await this.executeInContainer(clientId, `mkdir -p "${dirPath}"`);
+      
+      // Escrever arquivo usando echo e base64 para evitar problemas com caracteres especiais
+      const base64Content = Buffer.from(content).toString('base64');
+      const command = `echo "${base64Content}" | base64 -d > "${filePath}"`;
+      
+      await this.executeInContainer(clientId, command);
+      
+      // Definir permissões apropriadas
+      await this.executeInContainer(clientId, `chmod 644 "${filePath}"`);
+      
+      console.log(`✅ Arquivo ${filePath} escrito no container ${clientId}`);
+      return true;
+    } catch (error) {
+      console.error(`❌ Erro ao escrever arquivo no container ${clientId}:`, error);
+      throw error;
+    }
+  }
+
+  async readFileFromContainer(clientId, filePath) {
+    const containerInfo = this.activeContainers.get(clientId);
+    if (!containerInfo) {
+      throw new Error(`Container não encontrado para cliente ${clientId}`);
+    }
+
+    try {
+      // Ler arquivo usando base64 para preservar conteúdo
+      const command = `cat "${filePath}" | base64`;
+      const base64Content = await this.executeInContainer(clientId, command);
+      
+      // Decodificar conteúdo
+      const content = Buffer.from(base64Content.trim(), 'base64');
+      
+      return content;
+    } catch (error) {
+      console.error(`❌ Erro ao ler arquivo do container ${clientId}:`, error);
+      throw error;
+    }
+  }
+
+  async listFiles(clientId, directory) {
+    const containerInfo = this.activeContainers.get(clientId);
+    if (!containerInfo) {
+      throw new Error(`Container não encontrado para cliente ${clientId}`);
+    }
+
+    try {
+      // Listar arquivos com informações detalhadas
+      const command = `find "${directory}" -type f -exec ls -la {} \\; 2>/dev/null | awk '{print $9 "|" $5 "|" $6 " " $7 " " $8}'`;
+      const output = await this.executeInContainer(clientId, command);
+      
+      // Processar saída
+      const files = output.trim().split('\n').filter(line => line.length > 0).map(line => {
+        const [filePath, size, date] = line.split('|');
+        return {
+          path: filePath.trim(),
+          size: parseInt(size) || 0,
+          date: date.trim(),
+          name: path.basename(filePath.trim())
+        };
+      });
+      
+      return files;
+    } catch (error) {
+      console.error(`❌ Erro ao listar arquivos do container ${clientId}:`, error);
+      return [];
+    }
   }
 }
 
-// Inicializar o orchestrador
-const orchestrator = new ClaudeCodeOrchestrator();
-orchestrator.start().catch(error => {
-  console.error('Erro ao iniciar o orchestrator:', error);
-  process.exit(1);
+// Instanciar gerenciador
+const containerManager = new ClientContainerManager();
+
+// WebSocket handling
+wss.on('connection', (ws) => {
+  console.log('Nova conexão WebSocket estabelecida');
+  
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message);
+      if (data.type === 'register' && data.clientId) {
+        clientConnections.set(data.clientId, ws);
+        console.log(`Cliente ${data.clientId} registrado`);
+      }
+    } catch (error) {
+      console.error('Erro ao processar mensagem WebSocket:', error);
+    }
+  });
+
+  ws.on('close', () => {
+    console.log('Conexão WebSocket fechada');
+    for (const [clientId, connection] of clientConnections.entries()) {
+      if (connection === ws) {
+        clientConnections.delete(clientId);
+        break;
+      }
+    }
+  });
 });
 
-module.exports = ClaudeCodeOrchestrator;
+// Função para enviar mensagem via WebSocket
+function sendToClient(clientId, message) {
+  const connection = clientConnections.get(clientId);
+  if (connection && connection.readyState === WebSocket.OPEN) {
+    connection.send(JSON.stringify(message));
+  }
+}
+
+// Rotas da API
+
+// Criar sessão de cliente
+app.post('/api/client/create', createRateLimit, async (req, res) => {
+  try {
+    const clientId = uuidv4();
+    const { resourceType = 'medium', priority = 'normal' } = req.body;
+    
+    // Validar tipo de recurso
+    if (!['light', 'medium', 'heavy'].includes(resourceType)) {
+      return res.status(400).json({ error: 'Tipo de recurso inválido' });
+    }
+    
+    // Criar container para o cliente
+    await containerManager.createClientContainer(clientId, resourceType);
+    
+    res.json({
+      clientId,
+      message: 'Sessão criada com sucesso',
+      containerStatus: 'created',
+      resourceType,
+      maxAge: containerManager.maxContainerAge
+    });
+  } catch (error) {
+    console.error('Erro ao criar sessão:', error);
+    res.status(500).json({ error: error.message || 'Erro ao criar container do cliente' });
+  }
+});
+
+// Status do container do cliente
+app.get('/api/client/:clientId/status', async (req, res) => {
+  try {
+    const clientId = req.params.clientId;
+    const status = await containerManager.getContainerStatus(clientId);
+    
+    if (!status) {
+      return res.status(404).json({ error: 'Container não encontrado' });
+    }
+    
+    res.json(status);
+  } catch (error) {
+    console.error('Erro ao verificar status:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Executar análise
+app.post('/api/analyze', async (req, res) => {
+  try {
+    const { clientId, filePath, documentType } = req.body;
+    
+    if (!clientId || !filePath || !documentType) {
+      return res.status(400).json({ error: 'Parâmetros obrigatórios faltando' });
+    }
+    
+    // Verificar se container existe
+    const status = await containerManager.getContainerStatus(clientId);
+    if (!status) {
+      return res.status(404).json({ error: 'Container não encontrado' });
+    }
+    
+    // Notificar início da análise
+    sendToClient(clientId, {
+      type: 'analysis_started',
+      message: 'Análise iniciada no container isolado...'
+    });
+    
+    // Executar análise no container
+    const command = [
+      'node',
+      '/app/claude-analyzer.js',
+      '--file', filePath,
+      '--type', documentType,
+      '--client', clientId
+    ];
+    
+    containerManager.executeInContainer(clientId, command, (data) => {
+      sendToClient(clientId, {
+        type: 'analysis_chunk',
+        content: data
+      });
+    })
+    .then((result) => {
+      sendToClient(clientId, {
+        type: 'analysis_complete',
+        content: result
+      });
+    })
+    .catch((error) => {
+      console.error(`❌ Erro na análise para cliente ${clientId}:`, error);
+      sendToClient(clientId, {
+        type: 'analysis_error',
+        error: error.message
+      });
+    });
+    
+    res.json({ message: 'Análise iniciada no container' });
+  } catch (error) {
+    console.error('❌ Erro ao iniciar análise:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Listar containers ativos
+app.get('/api/containers', async (req, res) => {
+  try {
+    const containers = await containerManager.listActiveContainers();
+    res.json({ containers });
+  } catch (error) {
+    console.error('Erro ao listar containers:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Remover container do cliente
+app.delete('/api/client/:clientId', async (req, res) => {
+  try {
+    const clientId = req.params.clientId;
+    const { force = false } = req.query;
+    
+    await containerManager.cleanupContainer(clientId, force === 'true');
+    clientConnections.delete(clientId);
+    
+    res.json({ message: 'Container removido com sucesso' });
+  } catch (error) {
+    console.error('❌ Erro ao remover container:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Estatísticas do container
+app.get('/api/client/:clientId/stats', async (req, res) => {
+  try {
+    const clientId = req.params.clientId;
+    const stats = await containerManager.getContainerStats(clientId);
+    
+    if (!stats) {
+      return res.status(404).json({ error: 'Container não encontrado' });
+    }
+    
+    res.json(stats);
+  } catch (error) {
+    console.error('❌ Erro ao obter estatísticas:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// Executar comando no container
+app.post('/api/client/:clientId/execute', async (req, res) => {
+  try {
+    const clientId = req.params.clientId;
+    const { command, workingDir, timeout = 30000 } = req.body;
+    
+    if (!command) {
+      return res.status(400).json({ error: 'Comando obrigatório' });
+    }
+    
+    const result = await containerManager.executeInContainer(
+      clientId, 
+      command, 
+      null, 
+      { workingDir, timeout }
+    );
+    
+    res.json({ result });
+  } catch (error) {
+    console.error('❌ Erro ao executar comando:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Redimensionar recursos do container
+app.patch('/api/client/:clientId/resize', async (req, res) => {
+  try {
+    const clientId = req.params.clientId;
+    const { resourceType } = req.body;
+    
+    if (!['light', 'medium', 'heavy'].includes(resourceType)) {
+      return res.status(400).json({ error: 'Tipo de recurso inválido' });
+    }
+    
+    // Recriar container com novos recursos
+    await containerManager.cleanupContainer(clientId);
+    await containerManager.createClientContainer(clientId, resourceType);
+    
+    res.json({ 
+      message: 'Recursos redimensionados com sucesso',
+      resourceType 
+    });
+  } catch (error) {
+    console.error('❌ Erro ao redimensionar recursos:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Renovar timeout do container
+app.patch('/api/client/:clientId/renew', async (req, res) => {
+  try {
+    const clientId = req.params.clientId;
+    const containerInfo = containerManager.activeContainers.get(clientId);
+    
+    if (!containerInfo) {
+      return res.status(404).json({ error: 'Container não encontrado' });
+    }
+    
+    // Renovar timeout
+    containerManager.setupContainerTimeout(clientId);
+    containerInfo.lastActivity = Date.now();
+    
+    res.json({ 
+      message: 'Timeout renovado com sucesso',
+      newExpiry: Date.now() + containerManager.maxContainerAge
+    });
+  } catch (error) {
+    console.error('❌ Erro ao renovar timeout:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Upload de arquivo para análise
+app.post('/api/client/:clientId/upload', async (req, res) => {
+  try {
+    const clientId = req.params.clientId;
+    const { fileName, fileContent, fileType } = req.body;
+    
+    if (!fileName || !fileContent) {
+      return res.status(400).json({ error: 'Nome do arquivo e conteúdo são obrigatórios' });
+    }
+    
+    // Criar container se não existir
+    if (!containerManager.activeContainers.has(clientId)) {
+      await containerManager.createClientContainer(clientId, 'medium');
+    }
+    
+    // Salvar arquivo no container
+    const filePath = `/app/uploads/${fileName}`;
+    await containerManager.writeFileToContainer(clientId, filePath, fileContent);
+    
+    res.json({ 
+      message: 'Arquivo enviado com sucesso',
+      filePath,
+      fileName,
+      fileType
+    });
+  } catch (error) {
+    console.error('❌ Erro ao fazer upload:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Análise de documento com Claude Code
+app.post('/api/client/:clientId/analyze', async (req, res) => {
+  try {
+    const clientId = req.params.clientId;
+    const { fileName, documentType, analysisType = 'medium' } = req.body;
+    
+    if (!fileName || !documentType) {
+      return res.status(400).json({ error: 'Nome do arquivo e tipo de documento são obrigatórios' });
+    }
+    
+    // Verificar se container existe
+    if (!containerManager.activeContainers.has(clientId)) {
+      return res.status(404).json({ error: 'Container não encontrado. Faça upload do arquivo primeiro.' });
+    }
+    
+    // Iniciar análise
+    const analysisId = uuidv4();
+    const filePath = `/app/uploads/${fileName}`;
+    
+    // Executar análise em background
+    setImmediate(async () => {
+      try {
+        // Notificar início da análise
+        sendToClient(clientId, {
+          type: 'analysis_started',
+          analysisId,
+          fileName,
+          documentType,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Executar Claude Code
+        const command = `node claude-analyzer.js --file "${filePath}" --type "${documentType}" --client "${clientId}"`;
+        
+        await containerManager.executeInContainer(
+          clientId,
+          command,
+          (data) => {
+            // Enviar progresso via WebSocket
+            sendToClient(clientId, {
+              type: 'analysis_progress',
+              analysisId,
+              data: data.toString(),
+              timestamp: new Date().toISOString()
+            });
+          },
+          { timeout: 5 * 60 * 1000 } // 5 minutos
+        );
+        
+        // Notificar conclusão
+        sendToClient(clientId, {
+          type: 'analysis_completed',
+          analysisId,
+          fileName,
+          documentType,
+          timestamp: new Date().toISOString()
+        });
+        
+      } catch (error) {
+        console.error(`❌ Erro na análise ${analysisId}:`, error);
+        sendToClient(clientId, {
+          type: 'analysis_error',
+          analysisId,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+    
+    res.json({ 
+      message: 'Análise iniciada com sucesso',
+      analysisId,
+      fileName,
+      documentType,
+      estimatedTime: '2-5 minutos'
+    });
+  } catch (error) {
+    console.error('❌ Erro ao iniciar análise:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Chat com documento analisado
+app.post('/api/client/:clientId/chat', async (req, res) => {
+  try {
+    const clientId = req.params.clientId;
+    const { message, fileName, context } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ error: 'Mensagem é obrigatória' });
+    }
+    
+    // Verificar se container existe
+    if (!containerManager.activeContainers.has(clientId)) {
+      return res.status(404).json({ error: 'Container não encontrado' });
+    }
+    
+    const chatId = uuidv4();
+    
+    // Executar chat em background
+    setImmediate(async () => {
+      try {
+        // Notificar início do chat
+        sendToClient(clientId, {
+          type: 'chat_started',
+          chatId,
+          message,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Criar prompt para chat
+        const chatPrompt = `Você está conversando sobre o documento "${fileName || 'documento analisado'}" com o cliente ${clientId}.
+        
+Contexto: ${context || 'Análise de documento'}
+Mensagem do usuário: ${message}
+
+Responda de forma natural e informativa, mantendo o contexto da análise anterior.`;
+        
+        // Executar Claude Code para chat
+        const command = `echo '${chatPrompt}' | claude`;
+        
+        await containerManager.executeInContainer(
+          clientId,
+          command,
+          (data) => {
+            // Enviar resposta via WebSocket
+            sendToClient(clientId, {
+              type: 'chat_response',
+              chatId,
+              data: data.toString(),
+              timestamp: new Date().toISOString()
+            });
+          },
+          { timeout: 2 * 60 * 1000 } // 2 minutos
+        );
+        
+        // Notificar conclusão do chat
+        sendToClient(clientId, {
+          type: 'chat_completed',
+          chatId,
+          timestamp: new Date().toISOString()
+        });
+        
+      } catch (error) {
+        console.error(`❌ Erro no chat ${chatId}:`, error);
+        sendToClient(clientId, {
+          type: 'chat_error',
+          chatId,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+    
+    res.json({ 
+      message: 'Chat iniciado com sucesso',
+      chatId
+    });
+  } catch (error) {
+    console.error('❌ Erro ao iniciar chat:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Listar arquivos do cliente
+app.get('/api/client/:clientId/files', async (req, res) => {
+  try {
+    const clientId = req.params.clientId;
+    
+    if (!containerManager.activeContainers.has(clientId)) {
+      return res.status(404).json({ error: 'Container não encontrado' });
+    }
+    
+    // Listar arquivos no container
+    const files = await containerManager.listFiles(clientId, '/app/uploads');
+    
+    res.json({ 
+      files,
+      clientId,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Erro ao listar arquivos:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Baixar resultado de análise
+app.get('/api/client/:clientId/download/:fileName', async (req, res) => {
+  try {
+    const clientId = req.params.clientId;
+    const fileName = req.params.fileName;
+    
+    if (!containerManager.activeContainers.has(clientId)) {
+      return res.status(404).json({ error: 'Container não encontrado' });
+    }
+    
+    // Ler arquivo do container
+    const filePath = `/app/results/${fileName}`;
+    const fileContent = await containerManager.readFileFromContainer(clientId, filePath);
+    
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.send(fileContent);
+  } catch (error) {
+    console.error('❌ Erro ao baixar arquivo:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    containers: containerManager.activeContainers.size,
+    uptime: process.uptime(),
+    claudeCode: process.env.CLAUDE_API_KEY ? 'configured' : 'not configured',
+    tunnelActive: process.env.TUNNEL_ACTIVE === 'true'
+  });
+});
+
+// Métricas do sistema
+app.get('/api/metrics', async (req, res) => {
+  try {
+    const systemMetrics = {
+      timestamp: new Date().toISOString(),
+      containers: {
+        active: containerManager.activeContainers.size,
+        total_created: containerManager.totalContainersCreated,
+        total_destroyed: containerManager.totalContainersDestroyed,
+        max_concurrent: containerManager.maxConcurrentContainers
+      },
+      resources: {
+        memory: process.memoryUsage(),
+        cpu: process.cpuUsage(),
+        uptime: process.uptime()
+      },
+      docker: {
+        connected: true, // Simplificado - poderia verificar conexão real
+        version: await docker.version().catch(() => null)
+      }
+    };
+
+    res.json(systemMetrics);
+  } catch (error) {
+    console.error('❌ Erro ao obter métricas:', error);
+    res.status(500).json({ error: 'Erro ao obter métricas do sistema' });
+  }
+});
+
+// Histórico de estatísticas de um container
+app.get('/api/client/:clientId/history', async (req, res) => {
+  try {
+    const clientId = req.params.clientId;
+    const history = containerManager.containerHistory.get(clientId) || [];
+    
+    res.json({
+      clientId,
+      history,
+      count: history.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Erro ao obter histórico:', error);
+    res.status(500).json({ error: 'Erro ao obter histórico' });
+  }
+});
+
+// Servir frontend
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'API endpoint not found' });
+  }
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
+// Limpeza automática de containers
+setInterval(async () => {
+  try {
+    const cleaned = await containerManager.cleanupOldContainers();
+    if (cleaned > 0) {
+      console.log(`🧹 Limpeza automática: ${cleaned} containers removidos`);
+    }
+  } catch (error) {
+    console.error('❌ Erro na limpeza automática:', error);
+  }
+}, 10 * 60 * 1000); // A cada 10 minutos
+
+// Iniciar servidor
+app.listen(PORT, () => {
+  console.log(`🚀 Claude Code Orchestrator rodando na porta ${PORT}`);
+  console.log(`📡 WebSocket servidor rodando na porta 8080`);
+  console.log(`🐳 Docker integration ativo`);
+  console.log(`🎯 Ambiente: ${process.env.NODE_ENV || 'development'}`);
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\n🛑 Encerrando Claude Code Orchestrator...');
+  
+  // Limpar todos os containers
+  const activeClients = Array.from(containerManager.activeContainers.keys());
+  console.log(`🔄 Limpando ${activeClients.length} containers ativos...`);
+  
+  for (const clientId of activeClients) {
+    await containerManager.cleanupContainer(clientId);
+  }
+  
+  // Fechar conexões WebSocket
+  for (const [clientId, connection] of clientConnections.entries()) {
+    connection.close();
+  }
+  
+  wss.close();
+  
+  console.log('✅ Servidor encerrado com sucesso');
+  process.exit(0);
+});

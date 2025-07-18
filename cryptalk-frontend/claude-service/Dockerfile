@@ -2,7 +2,7 @@
 FROM node:18-alpine AS builder
 
 # Instalar dependências de build
-RUN apk add --no-cache python3 make g++
+RUN apk add --no-cache python3 make g++ git
 
 # Diretório de trabalho
 WORKDIR /app
@@ -20,27 +20,39 @@ FROM node:18-alpine
 RUN apk add --no-cache \
     dumb-init \
     curl \
+    docker-cli \
+    shadow \
     && rm -rf /var/cache/apk/*
 
-# Criar usuário não-root
+# Criar usuário não-root com UID/GID específicos
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+    adduser -S nodejs -u 1001 -G nodejs
+
+# Criar grupo docker com GID disponível
+RUN addgroup -g 998 -S docker && \
+    adduser nodejs docker
 
 # Diretório de trabalho
 WORKDIR /app
 
 # Copiar dependências do builder
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 
 # Copiar código da aplicação
 COPY --chown=nodejs:nodejs . .
 
-# Criar diretórios necessários
-RUN mkdir -p uploads/pending uploads/processing uploads/completed uploads/failed logs && \
-    chown -R nodejs:nodejs uploads logs
+# Criar diretórios necessários com permissões corretas
+RUN mkdir -p uploads/pending uploads/processing uploads/completed uploads/failed logs data && \
+    chown -R nodejs:nodejs /app && \
+    chmod -R 755 uploads logs data
 
-# Configurar permissões
-RUN chmod +x health-check.js
+# Configurar permissões executáveis
+RUN chmod +x health-check.js orchestrator.js claude-analyzer.js || true
+
+# Script simples de entrypoint
+RUN echo '#!/bin/sh' > /usr/local/bin/docker-entrypoint.sh && \
+    echo 'exec dumb-init -- "$@"' >> /usr/local/bin/docker-entrypoint.sh && \
+    chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Usuário não-root
 USER nodejs
@@ -49,11 +61,11 @@ USER nodejs
 EXPOSE 3000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node health-check.js
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD node health-check.js || exit 1
 
-# Usar dumb-init para gerenciar sinais
-ENTRYPOINT ["dumb-init", "--"]
+# Usar script customizado como entrypoint
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 # Comando padrão
 CMD ["node", "orchestrator.js"]

@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # Teste do Claude Service - Versão Principal
+  claude-service-main:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: claude-service:main
+    container_name: claude-service-test-main
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "health-check.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  # Teste do Claude Service - Versão Simples
+  claude-service-simple:
+    build:
+      context: .
+      dockerfile: Dockerfile.simple
+    image: claude-service:simple
+    container_name: claude-service-test-simple
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    ports:
+      - "3001:3000"
+    healthcheck:
+      test: ["CMD", "node", "health-check.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  # Teste do Claude Service - Versão Produção
+  claude-service-production:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+    image: claude-service:production
+    container_name: claude-service-test-production
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    ports:
+      - "3002:3000"
+    healthcheck:
+      test: ["CMD", "su-exec", "nodejs", "node", "health-check.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+networks:
+  default:
+    name: claude-service-test-network
