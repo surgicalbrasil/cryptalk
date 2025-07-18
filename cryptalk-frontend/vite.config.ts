@@ -7,6 +7,8 @@ export default defineConfig({
   define: {
     'process.env': {},
     global: 'globalThis',
+    // Define logger globally for Magic SDK compatibility
+    'logger': 'window.logger',
   },
   build: {
     rollupOptions: {
