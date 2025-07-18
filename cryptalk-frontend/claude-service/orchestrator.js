@@ -350,9 +350,7 @@ class ClientContainerManager {
             `${uploadsVolume}:/app/uploads`,
             `${logsVolume}:/app/logs`
           ],
-          NetworkMode: 'claude-network',
-          IpcMode: 'private',
-          PidMode: 'private'
+          NetworkMode: 'bridge'
         },
         Env: [
           ...CONTAINER_CONFIG.env,

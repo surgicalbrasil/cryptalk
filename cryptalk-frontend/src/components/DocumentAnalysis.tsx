@@ -82,7 +82,7 @@ const DocumentAnalysis: React.FC = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   // Configuração da API
-  const API_BASE = 'http://localhost:3001/api';
+  const API_BASE = 'http://localhost:3000/api';
   const WS_URL = 'ws://localhost:8080';
 
   // Efeito para scroll automático das mensagens
