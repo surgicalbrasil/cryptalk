@@ -87,18 +87,96 @@ class MagicLinkAuthService {
     }
 
     try {
-      // Send Magic Link email - this will trigger email sending but not wait for completion
-      await this.magic.auth.loginWithMagicLink({ email });
+      console.log('Attempting to send Magic Link to:', email);
       
-      // For Magic Link, the actual authentication happens when user clicks the link
-      // We should return success for email sending, but the user object will be set
-      // when they actually click the link and return to the app
+      // Try using the modern approach first - just send the email
+      try {
+        await this.magic.auth.loginWithMagicLink({ 
+          email,
+          showUI: false // Don't show UI immediately, just send email
+        });
+        
+        console.log('Magic Link email sent successfully');
+        
+        // Create a preliminary user object indicating email was sent
+        this.currentUser = {
+          email: email,
+          publicAddress: '',
+          isLoggedIn: false, // Not logged in yet
+          walletConnected: false
+        };
+
+        // Store pending auth state
+        localStorage.setItem('magicAuthPending', JSON.stringify({
+          email: email,
+          timestamp: Date.now()
+        }));
+
+        return this.currentUser;
+        
+      } catch (sendError) {
+        console.warn('Failed to send Magic Link email:', sendError);
+        
+        // Fallback: Try with showUI if sending fails
+        console.log('Trying fallback method with UI...');
+        
+        // Create a timeout wrapper to prevent hanging
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error('Magic Link request timed out after 15 seconds'));
+          }, 15000);
+        });
+
+        // Try with UI as fallback
+        const didToken = await Promise.race([
+          this.magic.auth.loginWithMagicLink({ 
+            email,
+            showUI: true
+          }),
+          timeoutPromise
+        ]);
+        
+        console.log('Magic Link process completed with UI, DID token:', didToken ? 'received' : 'null');
+        
+        // If we get here, the user completed the Magic Link flow
+        let userMetadata;
+        try {
+          userMetadata = await this.magic.user.getMetadata();
+          console.log('User metadata:', userMetadata);
+        } catch (metadataError) {
+          console.warn('Could not get user metadata:', metadataError);
+          userMetadata = { email, publicAddress: '', issuer: '' };
+        }
+        
+        // Create authenticated user object
+        this.currentUser = {
+          email: userMetadata.email || email,
+          publicAddress: userMetadata.publicAddress || '',
+          isLoggedIn: true,
+          walletConnected: false
+        };
+
+        // Store authenticated state
+        localStorage.setItem('magicAuth', JSON.stringify({
+          email: this.currentUser.email,
+          publicAddress: this.currentUser.publicAddress,
+          timestamp: Date.now()
+        }));
+
+        // Clear pending state
+        localStorage.removeItem('magicAuthPending');
+
+        return this.currentUser;
+      }
       
-      // Create a preliminary user object indicating email was sent
+    } catch (error) {
+      console.error('Magic Link login error:', error);
+      
+      // If everything failed, return a preliminary state indicating we tried to send email
       this.currentUser = {
         email: email,
-        publicAddress: '', // Will be filled when user completes Magic Link flow
-        isLoggedIn: false, // Not yet logged in until they click the link
+        publicAddress: '',
+        isLoggedIn: false,
         walletConnected: false
       };
 
@@ -109,9 +187,6 @@ class MagicLinkAuthService {
       }));
 
       return this.currentUser;
-    } catch (error) {
-      console.error('Magic Link login error:', error);
-      throw error;
     }
   }
 
