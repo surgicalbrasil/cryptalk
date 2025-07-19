@@ -15,40 +15,42 @@ if (typeof window !== 'undefined' && window.CRYPTALK_CONFIG) {
   globalConfig = window.CRYPTALK_CONFIG;
 }
 
-// URLs padrão baseadas no ambiente
+// URLs padrão baseadas no ambiente - SISTEMA HÍBRIDO
 const getDefaultUrls = () => {
-  // Se o tunnel está ativo, usar URLs do tunnel
-  if (tunnelActive || isTunnelMode) {
-    const tunnelUrl = import.meta.env.VITE_TUNNEL_URL || 'https://furthermore-decide-para-ste.trycloudflare.com';
+  // Detectar se estamos rodando localmente ou no Vercel
+  const isLocalhost = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || 
+     window.location.hostname === '127.0.0.1' ||
+     window.location.hostname.includes('localhost'));
+  
+  // MODO HÍBRIDO: Se estiver localhost, usar conexão direta
+  if (isLocalhost) {
+    console.log('🏠 Modo Híbrido: Usando conexão local direta');
+    return {
+      API_URL: 'http://localhost:3002',
+      WEBSOCKET_URL: 'ws://localhost:8080',
+      MODE: 'local-hybrid'
+    };
+  }
+  
+  // Se não for localhost (Vercel), tentar tunnel
+  if (tunnelActive || isTunnelMode || isProduction) {
+    const tunnelUrl = import.meta.env.VITE_TUNNEL_URL || 'https://upgrade-leon-participants-paragraphs.trycloudflare.com';
+    console.log('🌐 Modo Híbrido: Usando tunnel para acesso remoto');
     return {
       API_URL: tunnelUrl,
       WEBSOCKET_URL: tunnelUrl.replace('https://', 'wss://'),
       TUNNEL_URL: tunnelUrl,
-      MODE: 'tunnel'
+      MODE: 'tunnel-hybrid'
     };
   }
   
-  if (isProduction) {
-    // Em produção, tentar usar configuração global primeiro
-    if (globalConfig) {
-      return {
-        API_URL: globalConfig.API_URL,
-        WEBSOCKET_URL: globalConfig.WEBSOCKET_URL
-      };
-    }
-    
-    // Fallback para configuração de ambiente
-    return {
-      API_URL: import.meta.env.VITE_API_URL || 'http://localhost:3001',
-      WEBSOCKET_URL: import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:8080'
-    };
-  } else {
-    // Em desenvolvimento, usar localhost
-    return {
-      API_URL: 'http://localhost:3001',
-      WEBSOCKET_URL: 'ws://localhost:8080'
-    };
-  }
+  // Fallback padrão
+  return {
+    API_URL: import.meta.env.VITE_API_URL || 'http://localhost:3002',
+    WEBSOCKET_URL: import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:8080',
+    MODE: 'fallback'
+  };
 };
 
 // Configuração da API
@@ -142,70 +144,87 @@ export const checkApiAvailability = async () => {
   }
 };
 
-// Função para detectar e configurar URLs automaticamente
+// Função para detectar e configurar URLs automaticamente - SISTEMA HÍBRIDO
 export const autoDetectUrls = async () => {
-  // Se o tunnel está ativo, usar URLs do tunnel
-  if (tunnelActive || isTunnelMode) {
-    const tunnelUrl = import.meta.env.VITE_TUNNEL_URL || 'https://furthermore-decide-para-ste.trycloudflare.com';
+  const isLocalhost = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || 
+     window.location.hostname === '127.0.0.1' ||
+     window.location.hostname.includes('localhost'));
+
+  // MODO HÍBRIDO: Se for localhost, testar conexão direta primeiro
+  if (isLocalhost) {
+    console.log('🔍 Detecção Híbrida: Testando conexão local...');
+    
+    const localUrls = [
+      'http://localhost:3002',
+      'http://localhost:3001', 
+      'http://127.0.0.1:3002',
+      'http://127.0.0.1:3001'
+    ];
+    
+    for (const url of localUrls) {
+      try {
+        const response = await fetch(`${url}/api/client/create`, {
+          method: 'POST',
+          timeout: 3000
+        });
+        
+        if (response.ok) {
+          const wsUrl = url.replace('http://', 'ws://').replace('3002', '8080').replace('3001', '8080');
+          const localConfig = {
+            API_URL: url,
+            WEBSOCKET_URL: wsUrl,
+            MODE: 'local-hybrid-detected'
+          };
+          
+          console.log('✅ Conexão local detectada:', url);
+          updateConfig(localConfig);
+          return localConfig;
+        }
+      } catch (error) {
+        console.log('❌ Falhou:', url, error.message);
+        continue;
+      }
+    }
+    
+    console.log('⚠️ Conexão local falhou, mantendo configuração padrão');
+    return API_CONFIG;
+  }
+  
+  // MODO REMOTO: Se não for localhost (Vercel), usar tunnel
+  console.log('🌐 Detecção Híbrida: Modo remoto, usando tunnel');
+  if (tunnelActive || isTunnelMode || isProduction) {
+    const tunnelUrl = import.meta.env.VITE_TUNNEL_URL || 'https://upgrade-leon-participants-paragraphs.trycloudflare.com';
     const tunnelConfig = {
       API_URL: tunnelUrl,
       WEBSOCKET_URL: tunnelUrl.replace('https://', 'wss://'),
       TUNNEL_URL: tunnelUrl,
-      MODE: 'tunnel'
+      MODE: 'tunnel-hybrid'
     };
     
     updateConfig(tunnelConfig);
     return tunnelConfig;
   }
   
-  // Lista de URLs possíveis para testar
-  const possibleUrls = [
-    'http://localhost:3001',
-    'http://localhost:3000',
-    'http://127.0.0.1:3001',
-    'http://127.0.0.1:3000'
-  ];
-  
-  // Se estivermos em produção, não fazer auto-detecção
-  if (isProduction) {
-    return API_CONFIG;
-  }
-  
-  // Testar cada URL
-  for (const url of possibleUrls) {
-    try {
-      const response = await fetch(`${url}/api/health`, {
-        method: 'GET',
-        timeout: 2000
-      });
-      
-      if (response.ok) {
-        const wsUrl = url.replace('http://', 'ws://').replace('https://', 'wss://');
-        const detectedConfig = {
-          API_URL: url,
-          WEBSOCKET_URL: `${wsUrl.replace(':3001', ':8080')}`
-        };
-        
-        updateConfig(detectedConfig);
-        return detectedConfig;
-      }
-    } catch (error) {
-      // Continuar para próxima URL
-      continue;
-    }
-  }
-  
-  // Se não encontrou nenhuma URL, usar configuração padrão
+  // Fallback
   return API_CONFIG;
 };
 
-// Função para log de configuração
+// Função para log de configuração - SISTEMA HÍBRIDO
 export const logConfig = () => {
   if (LOG_CONFIG.CONSOLE) {
-    console.group('🔧 CrysTalk Configuration');
+    console.group('🔧 CrypTalk Configuration - Sistema Híbrido');
     console.log('Environment:', APP_CONFIG.ENVIRONMENT);
+    console.log('Mode:', API_CONFIG.MODE || 'standard');
     console.log('API URL:', API_CONFIG.API_URL);
     console.log('WebSocket URL:', API_CONFIG.WEBSOCKET_URL);
+    
+    if (API_CONFIG.MODE?.includes('local')) {
+      console.log('🏠 Modo Local: Conexão direta sem tunnel');
+    } else if (API_CONFIG.MODE?.includes('tunnel')) {
+      console.log('🌐 Modo Tunnel: Conexão via tunnel público');
+    }
+    
     console.log('Features:', APP_CONFIG.FEATURES);
     console.log('Version:', APP_CONFIG.VERSION);
     console.groupEnd();
