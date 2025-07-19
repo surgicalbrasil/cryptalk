@@ -1,0 +1,65 @@
+FROM node:18-alpine
+
+# Criar usuário não-root para segurança
+RUN addgroup -g 1001 claude && \
+    adduser -D -u 1001 -G claude claude
+
+# Configurar diretório de trabalho
+WORKDIR /app
+
+# Instalar dependências necessárias
+RUN apk add --no-cache \
+    bash \
+    curl \
+    git \
+    python3 \
+    py3-pip \
+    && rm -rf /var/cache/apk/*
+
+# Criar estrutura de diretórios
+RUN mkdir -p /app/uploads /app/workspace /app/templates /app/tools /app/logs && \
+    chown -R claude:claude /app
+
+# Copiar scripts de análise (permanentes na imagem)
+COPY --chown=claude:claude simple-analyzer.js /app/
+COPY --chown=claude:claude claude-analyzer.js /app/
+COPY --chown=claude:claude health-check.js /app/
+
+# Copiar templates de análise
+COPY --chown=claude:claude analysis-templates/ /app/templates/
+
+# Tornar scripts executáveis
+RUN chmod +x /app/*.js
+
+# Criar package.json para dependências Node.js
+RUN cat > /app/package.json << 'EOF'
+{
+  "name": "claude-analyzer",
+  "version": "1.0.0",
+  "description": "Claude Code Document Analyzer",
+  "main": "simple-analyzer.js",
+  "dependencies": {
+    "fs-extra": "^11.1.1",
+    "path": "^0.12.7"
+  }
+}
+EOF
+
+# Instalar dependências Node.js
+RUN npm install --production && \
+    chown -R claude:claude /app/node_modules
+
+# Configurar usuário padrão
+USER claude
+
+# Variáveis de ambiente
+ENV NODE_ENV=production
+ENV CLAUDE_WORKSPACE=/app/workspace
+ENV CLAUDE_UPLOADS=/app/uploads
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node /app/health-check.js
+
+# Comando padrão - manter container ativo
+CMD ["tail", "-f", "/dev/null"]

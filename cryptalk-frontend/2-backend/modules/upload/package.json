@@ -1,0 +1,81 @@
+{
+  "name": "@cryptalk/upload-module",
+  "version": "1.0.0",
+  "description": "Módulo modular e desacoplado para upload e gerenciamento de arquivos",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "node -r ts-node/register test-basic.ts",
+    "example": "node -r ts-node/register example-usage.ts",
+    "lint": "eslint . --ext .ts",
+    "clean": "rm -rf dist *.js *.d.ts *.js.map"
+  },
+  "keywords": [
+    "upload",
+    "file-management",
+    "modular",
+    "typescript",
+    "event-driven",
+    "validation",
+    "storage",
+    "chunked-upload",
+    "batch-processing"
+  ],
+  "author": "CrypTalk Team",
+  "license": "MIT",
+  "dependencies": {
+    "events": "^3.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.0",
+    "eslint": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.7.0"
+  },
+  "files": [
+    "dist/**/*",
+    "*.d.ts",
+    "*.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js",
+      "require": "./index.js"
+    },
+    "./FileService": {
+      "types": "./FileService.d.ts",
+      "import": "./FileService.js",
+      "require": "./FileService.js"
+    },
+    "./UploadManager": {
+      "types": "./UploadManager.d.ts",
+      "import": "./UploadManager.js",
+      "require": "./UploadManager.js"
+    },
+    "./FileValidator": {
+      "types": "./FileValidator.d.ts",
+      "import": "./FileValidator.js",
+      "require": "./FileValidator.js"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cryptalk/cryptalk-frontend.git",
+    "directory": "2-backend/modules/upload"
+  },
+  "bugs": {
+    "url": "https://github.com/cryptalk/cryptalk-frontend/issues"
+  },
+  "homepage": "https://github.com/cryptalk/cryptalk-frontend/tree/main/2-backend/modules/upload#readme"
+}

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CrysTalk - Análise de Documentos com IA</title>
+    <meta name="description" content="Plataforma de análise de documentos com inteligência artificial" />
+    <script src="/config.js"></script>
+    <script>
+      // Logger polyfill para evitar ReferenceError
+      if (typeof window.logger === 'undefined') {
+        window.logger = {
+          debug: (...args) => console.log('[DEBUG]', ...args),
+          info: (...args) => console.info('[INFO]', ...args),
+          warn: (...args) => console.warn('[WARN]', ...args),
+          error: (...args) => console.error('[ERROR]', ...args),
+          log: (...args) => console.log('[LOG]', ...args),
+          trace: (...args) => console.trace('[TRACE]', ...args)
+        };
+      }
+    </script>
+    <script type="module" crossorigin src="/assets/index-1bbb8d78.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-be7a58bc.js">
+    <link rel="modulepreload" crossorigin href="/assets/ui-8fe41d16.js">
+    <link rel="modulepreload" crossorigin href="/assets/utils-a0616f45.js">
+    <link rel="stylesheet" href="/assets/index-3ca54e14.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    
+  </body>
+</html>

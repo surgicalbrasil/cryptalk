@@ -1,399 +1,337 @@
-# CrypTalk Frontend
-
-Sistema frontend para a plataforma CrypTalk - uma solução completa para análise de documentos com IA, chat em tempo real e armazenamento descentralizado.
-
-## 🚀 Funcionalidades
-
-- **Análise de Documentos com IA**: Processamento inteligente de documentos usando Claude AI
-- **Chat em Tempo Real**: Interface de chat com timestamping e histórico
-- **Armazenamento Descentralizado**: Integração com Web3 Storage e IPFS
-- **Autenticação Segura**: Sistema de autenticação com Magic Link
-- **Interface Moderna**: UI responsiva construída com React e Chakra UI
-- **Múltiplos Formatos**: Suporte para PDF, DOC, DOCX, TXT, CSV, JSON, imagens
-- **Dashboard Modular**: Painéis organizados por funcionalidade
-- **Análise de Múltiplos Agentes**: Suporte para diferentes tipos de análise (patentes, pitch decks, projeções financeiras)
-
-## 🏗️ Arquitetura
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   React Frontend│    │   Claude API    │    │   Web3 Storage  │
-│   (Vite + TS)   │◄──►│   (Node.js)     │◄──►│     (IPFS)      │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-         │                       │                       │
-         │                       ▼                       │
-         │              ┌─────────────────┐              │
-         │              │  Magic Link     │              │
-         │              │  (Auth)         │              │
-         │              └─────────────────┘              │
-         │                                                │
-         ▼                                                ▼
-┌─────────────────┐                            ┌─────────────────┐
-│  Document       │                            │   WebSocket     │
-│  Analysis       │                            │  (Real-time)    │
-└─────────────────┘                            └─────────────────┘
-```
-
-## 📋 Pré-requisitos
-
-- Node.js 18.0+
-- npm 8.0+
-- Navegador moderno (Chrome, Firefox, Safari, Edge)
-- 2GB RAM mínimo
-- 1GB espaço em disco
-
-## 🛠️ Instalação Rápida
-
-### 1. Clonar o Repositório
-
-```bash
-git clone https://github.com/surgicalbrasil/cryptalk.git
-cd cryptalk-frontend
-```
-
-### 2. Configurar Ambiente
-
-```bash
-# Executar script de setup
-npm run setup
-```
-
-### 3. Configurar Variáveis de Ambiente
-
-```bash
-# Copiar arquivo de exemplo
-cp .env.example .env
-
-# Editar configurações
-nano .env
-```
-
-### 4. Iniciar Aplicação
-
-```bash
-# Desenvolvimento
-npm run dev
-
-# Ou usar o alias
-npm start
-```
-
-### 5. Acessar a Aplicação
-
-Abra seu navegador e acesse: http://localhost:5173
-
-## 🔧 Configuração Detalhada
-
-### Variáveis de Ambiente
-
-Edite o arquivo `.env` na raiz do projeto:
-
-```env
-# API Configuration
-REACT_APP_API_URL=http://localhost:3001
-REACT_APP_WEBSOCKET_URL=ws://localhost:3001
-
-# Claude Code Integration
-REACT_APP_CLAUDE_CODE_ENABLED=true
-REACT_APP_CLAUDE_CODE_ENDPOINT=http://localhost:8080
-REACT_APP_CLAUDE_CODE_API_KEY=sua-chave-claude-aqui
-
-# Feature Flags
-REACT_APP_DOCUMENT_ANALYSIS_ENABLED=true
-REACT_APP_CHAT_INTERFACE_ENABLED=true
-REACT_APP_REAL_TIME_ANALYSIS_ENABLED=true
-
-# Auth Configuration
-REACT_APP_AUTH_ENABLED=true
-REACT_APP_MAGIC_PUBLISHABLE_KEY=sua-chave-magic-aqui
-
-# Web3 Storage
-REACT_APP_WEB3_STORAGE_TOKEN=seu-token-web3-storage-aqui
-
-# Upload Limits
-REACT_APP_MAX_FILE_SIZE=52428800  # 50MB
-REACT_APP_MAX_FILES_PER_UPLOAD=5
-```
-
-### Configuração de Produção
-
-Para produção, ajuste as seguintes variáveis:
-
-```env
-NODE_ENV=production
-REACT_APP_DEBUG=false
-REACT_APP_LOG_LEVEL=error
-REACT_APP_API_URL=https://sua-api-producao.com
-REACT_APP_WEBSOCKET_URL=wss://sua-api-producao.com
-```
-
-## 🎮 Uso
-
-### Interface Web
-
-A aplicação está disponível em:
-
-- **Aplicação Principal**: http://localhost:5173
-- **Modo de Produção**: http://localhost:4173 (após build)
-
-### Funcionalidades Principais
-
-#### 1. Análise de Documentos
-
-1. Acesse a seção "Análise de Documentos"
-2. Selecione o tipo de análise (patente, pitch deck, projeção financeira)
-3. Faça upload dos documentos
-4. Escolha o agente de IA apropriado
-5. Aguarde o processamento e visualize os resultados
-
-#### 2. Chat em Tempo Real
-
-1. Acesse a seção "Chat"
-2. Inicie uma conversa com timestamp automático
-3. Histórico de mensagens é salvo automaticamente
-4. Suporte a múltiplos formatos de mensagem
-
-#### 3. Armazenamento Web3
-
-1. Configure suas credenciais Web3 Storage
-2. Documentos são automaticamente armazenados no IPFS
-3. Acesse histórico de uploads
-4. Controle de versões automático
-
-### Scripts Disponíveis
-
-```bash
-# Desenvolvimento
-npm run dev          # Inicia servidor de desenvolvimento
-npm start           # Alias para npm run dev
-
-# Produção
-npm run build       # Cria build de produção
-npm run preview     # Visualiza build de produção
-npm run deploy      # Script automatizado de deploy
-
-# Manutenção
-npm run lint        # Executa linting
-npm run setup       # Configura ambiente
-npm run clean       # Limpa e reinstala dependências
-```
-
-## 📊 Estrutura do Projeto
-
-```
-cryptalk-frontend/
-├── src/
-│   ├── components/          # Componentes reutilizáveis
-│   ├── features/           # Funcionalidades por módulo
-│   │   ├── document-analysis/
-│   │   ├── chat/
-│   │   ├── storage/
-│   │   ├── ai-reviews/
-│   │   └── payments/
-│   ├── pages/              # Páginas da aplicação
-│   ├── services/           # Serviços e APIs
-│   ├── contexts/           # Contextos do React
-│   ├── hooks/              # Hooks customizados
-│   ├── shared/             # Utilitários compartilhados
-│   └── types/              # Definições TypeScript
-├── public/                 # Arquivos públicos
-├── scripts/               # Scripts de automação
-├── docs/                  # Documentação
-└── dist/                  # Build de produção
-```
-
-### Tecnologias Utilizadas
-
-- **React 18**: Framework principal
-- **TypeScript**: Tipagem estática
-- **Vite**: Build tool moderna
-- **Chakra UI**: Biblioteca de componentes
-- **React Router**: Roteamento
-- **Magic SDK**: Autenticação
-- **Web3 Storage**: Armazenamento descentralizado
-- **Axios**: Cliente HTTP
-- **React Query**: Gerenciamento de estado servidor
-
-## 🔒 Segurança
-
-### Práticas Implementadas
-
-- **Autenticação Segura**: Magic Link para autenticação sem senhas
-- **Validação de Arquivos**: Tipos e tamanhos limitados
-- **Comunicação Segura**: HTTPS em produção
-- **Headers de Segurança**: Configurações adequadas para produção
-- **Sanitização de Dados**: Validação de entrada em todas as APIs
-- **Armazenamento Descentralizado**: Dados críticos no IPFS
-
-### Configuração de Segurança
-
-```bash
-# Variáveis de ambiente sensíveis
-# Nunca commitar as chaves reais
-REACT_APP_MAGIC_PUBLISHABLE_KEY=pk_live_...
-REACT_APP_CLAUDE_CODE_API_KEY=sk_live_...
-REACT_APP_WEB3_STORAGE_TOKEN=token_...
-```
-
-## 🚀 Deploy
-
-### Deploy para Produção
-
-```bash
-# 1. Preparar ambiente
-npm run setup
-
-# 2. Configurar variáveis de produção
-# Editar .env com valores de produção
-
-# 3. Executar deploy
-npm run deploy
-
-# 4. Servir arquivos estáticos
-npm run preview
-```
-
-### Deploy com Vercel
-
-```bash
-# Instalar Vercel CLI
-npm i -g vercel
-
-# Deploy
-vercel --prod
-```
-
-### Deploy com Netlify
-
-```bash
-# Instalar Netlify CLI
-npm i -g netlify-cli
-
-# Deploy
-netlify deploy --prod --dir=dist
-```
-
-## 🔧 Desenvolvimento
-
-### Comandos Úteis
-
-```bash
-# Desenvolvimento
-npm run dev          # Servidor de desenvolvimento
-npm run build        # Build de produção
-npm run preview      # Visualizar build
-npm run lint         # Linting
-
-# Manutenção
-npm run clean        # Limpar e reinstalar
-npm run setup        # Configurar ambiente
-npm run deploy       # Deploy automatizado
-```
-
-### Estrutura de Desenvolvimento
-
-- **Componentes**: Seguem padrões de design consistentes
-- **Hooks**: Lógica reutilizável em hooks customizados
-- **Serviços**: Camada de abstração para APIs
-- **Contextos**: Gerenciamento de estado global
-- **Utilitários**: Funções auxiliares compartilhadas
-
-## 🐛 Solução de Problemas
-
-### Problemas Comuns
-
-#### Erro de instalação
-
-```bash
-# Limpar cache do npm
-npm cache clean --force
-
-# Reinstalar dependências
-npm run clean
-```
-
-#### Porta em uso
-
-```bash
-# Verificar portas em uso
-netstat -tuln | grep :5173
-
-# Matar processo
-kill -9 $(lsof -t -i:5173)
-
-# Ou usar porta diferente
-npm run dev -- --port 3000
-```
-
-#### Erro de build
-
-```bash
-# Verificar dependências
-npm ls
-
-# Atualizar dependências
-npm update
-
-# Recriar build
-rm -rf dist && npm run build
-```
-
-### Logs e Debug
-
-```bash
-# Modo de debug
-REACT_APP_DEBUG=true npm run dev
-
-# Logs no navegador
-# Abrir DevTools -> Console
-```
-
-## 🤝 Contribuição
-
-1. Fork o projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Faça commit das mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
-
-### Padrões de Código
-
-- Use TypeScript para tipagem
-- Siga os padrões do ESLint
-- Mantenha componentes pequenos e focados
-- Documente funções complexas
-- Escreva testes quando necessário
-
-## 📄 Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo LICENSE para mais detalhes.
-
-## 🆘 Suporte
-
-Para suporte e dúvidas:
-
-- **Issues**: https://github.com/surgicalbrasil/cryptalk/issues
-- **Discussões**: https://github.com/surgicalbrasil/cryptalk/discussions
-- **Email**: suporte@cryptalk.com
-
-## 📚 Documentação Adicional
-
-- [Guia de Desenvolvimento](GETTING_STARTED.md)
-- [Arquitetura do Sistema](ARCHITECTURE.md)
-- [Status do Sistema](SYSTEM_STATUS.md)
-- [Integração de Análise](DOCUMENT_ANALYSIS_INTEGRATION.md)
-
-## 🏆 Funcionalidades Implementadas
-
-- ✅ Interface de usuário moderna com Chakra UI
-- ✅ Sistema de autenticação com Magic Link
-- ✅ Upload e análise de documentos
-- ✅ Chat em tempo real com timestamps
-- ✅ Integração com Claude AI
-- ✅ Armazenamento Web3/IPFS
-- ✅ Dashboard modular e responsivo
-- ✅ Sistema de tipos TypeScript completo
+# 🎯 CrypTalk - Arquitetura Modular V2.0
+
+> **Sistema de Análise de Documentos com IA usando Arquitetura Verdadeiramente Modular**
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![Claude AI](https://img.shields.io/badge/Claude%20AI-FF6B35?style=for-the-badge&logo=anthropic&logoColor=white)](https://claude.ai/)
+[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
 
 ---
 
-**Desenvolvido pela equipe CrypTalk** 🚀
+## 🚀 **O que é o CrypTalk?**
+
+CrypTalk é uma plataforma de análise de documentos que utiliza Claude AI para fornecer insights profundos sobre:
+- 📊 **Pitch Decks** - Análise de viabilidade e potencial
+- 📋 **Documentos Financeiros** - Projeções e métricas
+- ⚖️ **Documentos Legais** - Análise jurídica
+- 🔬 **Documentos Técnicos** - Avaliação tecnológica
+- 📜 **Patentes** - Análise de inovação
+
+---
+
+## 🏗️ **Arquitetura Modular V2.0**
+
+### **📁 Estrutura Didática**
+```
+cryptalk/
+├── 1-frontend/              # 🎨 Interface do usuário (React + Vite)
+├── 2-backend/               # ⚙️ Backend modular (TypeScript)
+│   ├── core/               # 🎯 Foundation (Config + DI + Interfaces)
+│   ├── modules/            # 🧩 Módulos independentes
+│   └── orchestrator.ts     # 🎼 Coordenador modular
+├── 3-config/              # ⚙️ Configurações e infraestrutura
+├── 4-scripts/             # 🔧 Automação e deployment
+├── 5-storage/             # 💾 Dados, logs e uploads
+└── 6-docs/                # 📚 Documentação completa
+```
+
+### **🧩 Módulos Independentes**
+- **🐳 Docker Module** - Gerenciamento de containers isolados
+- **🤖 Claude Module** - Serviços de IA e análise
+- **📁 Upload Module** - Processamento e validação de arquivos
+- **🌐 WebSocket Module** - Comunicação real-time
+
+---
+
+## ⚡ **Quick Start**
+
+### **🔧 Pré-requisitos**
+```bash
+# Node.js 18+ e Docker instalados
+node --version  # v18+
+docker --version
+```
+
+### **📦 Instalação**
+```bash
+# Clone o repositório
+git clone https://github.com/surgicalbrasil/cryptalk.git
+cd cryptalk
+
+# Instale dependências
+npm run install-all
+
+# Configure ambiente
+cp .env.example .env
+# Edite .env com suas chaves API
+```
+
+### **🚀 Executar**
+```bash
+# Desenvolvimento (arquitetura modular V2.0)
+npm start
+
+# ou arquitetura anterior (para comparação)
+npm run start:old
+```
+
+### **🌐 Acessar**
+- **Frontend:** http://localhost:5173
+- **Backend API:** http://localhost:3002
+- **Health Check:** http://localhost:3002/api/health
+- **WebSocket:** ws://localhost:8080
+
+---
+
+## 🎯 **Características Técnicas**
+
+### **✅ Arquitetura Verdadeiramente Modular**
+- **Zero Acoplamento** entre módulos
+- **Dependency Injection** com container
+- **Event-Driven** communication
+- **TypeScript Strict** com interfaces
+- **Testabilidade** módulo por módulo
+
+### **🔒 Segurança & Performance**
+- Rate limiting configurável
+- Validação robusta de arquivos
+- Containers Docker isolados
+- Input sanitization
+- CORS e Helmet configurados
+
+### **🔄 Event-Driven Architecture**
+```typescript
+// Comunicação via EventBus
+dockerService.on('container-created', handler);
+claudeService.on('analysis_progress', progressHandler);
+fileService.on('file_uploaded', uploadHandler);
+wsModule.eventBus.publish('event', data);
+```
+
+### **⚙️ Configuração Centralizada**
+```typescript
+// Zero hardcoding
+const config = configService.getConfig();
+const dockerService = createDockerService(config.docker);
+const claudeService = createClaudeService(config.claude);
+```
+
+---
+
+## 🧪 **Testes**
+
+### **Testes por Módulo (Isolados)**
+```bash
+npm run test:docker     # Testa módulo Docker
+npm run test:claude     # Testa módulo Claude
+npm run test:upload     # Testa módulo Upload
+npm run test:websocket  # Testa módulo WebSocket
+```
+
+### **Validação Completa**
+```bash
+npm run validate        # TypeScript validation
+npm run test:modules    # Todos os testes modulares
+npm run health          # Health check dos serviços
+```
+
+---
+
+## 📊 **Monitoramento**
+
+### **APIs de Status**
+```bash
+# Health check detalhado
+curl http://localhost:3002/api/health
+
+# Status dos serviços
+curl http://localhost:3002/api/status
+
+# Métricas dos módulos
+npm run health
+```
+
+### **Infraestrutura (Opcional)**
+```bash
+# PostgreSQL + Redis + Prometheus + Grafana
+npm run docker:up
+
+# Monitoramento avançado
+# Grafana: http://localhost:3001
+# Prometheus: http://localhost:9091
+```
+
+---
+
+## 🔄 **Workflows Suportados**
+
+### **1. Análise de Documento**
+```
+Upload → Validação → Container → Claude AI → Resultado → WebSocket
+```
+
+### **2. Conversação Contextual**
+```
+Documento Analisado → Sessão → Pergunta → Claude → Resposta Contextual
+```
+
+### **3. Monitoramento Real-time**
+```
+WebSocket → Events → Progress Updates → Notificações
+```
+
+---
+
+## 📚 **Documentação**
+
+### **Guias Técnicos**
+- [📖 Arquitetura Modular V2.0](6-docs/guides/ARQUITETURA_MODULAR_V2.md)
+- [🏗️ Estrutura Modular](6-docs/guides/ESTRUTURA_MODULAR.md)
+- [🐳 Docker Guide](6-docs/guides/DOCKER_GUIDE.md)
+- [🔧 Deployment](6-docs/guides/DEPLOYMENT.md)
+
+### **API Documentation**
+- [🔌 Core Interfaces](2-backend/core/interfaces/)
+- [🐳 Docker Module](2-backend/modules/docker/)
+- [🤖 Claude Module](2-backend/modules/claude/)
+- [📁 Upload Module](2-backend/modules/upload/)
+- [🌐 WebSocket Module](2-backend/modules/websocket/)
+
+---
+
+## 🛠️ **Scripts Disponíveis**
+
+### **Desenvolvimento**
+```bash
+npm start              # Backend modular + Frontend
+npm run dev            # Só frontend
+npm run backend        # Só backend modular
+npm run backend:old    # Backend monolítico (legacy)
+```
+
+### **Infraestrutura**
+```bash
+npm run docker:up      # Sobe PostgreSQL + Redis + Monitoring
+npm run docker:down    # Para containers
+npm run setup          # Setup completo do ambiente
+```
+
+### **Testes & Qualidade**
+```bash
+npm run test           # Todos os testes
+npm run test:modules   # Testes modulares
+npm run validate       # Validação TypeScript
+npm run health         # Health check
+```
+
+### **Deployment**
+```bash
+npm run build          # Build de produção
+npm run deploy         # Deploy automatizado
+npm run security       # Security lockdown
+```
+
+---
+
+## 🔧 **Configuração Avançada**
+
+### **Variáveis de Ambiente**
+```bash
+# APIs
+ANTHROPIC_API_KEY=your_claude_api_key
+CLAUDE_API_KEY=your_claude_api_key
+
+# Servidor
+PORT=3002
+WS_PORT=8080
+NODE_ENV=development
+
+# Docker
+DOCKER_IMAGE=claude-user-env:latest
+MAX_CONTAINERS=10
+
+# Segurança
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_MAX=100
+```
+
+### **Arquivo de Configuração**
+```json
+// 3-config/app-config.json
+{
+  "app": { "port": 3002, "env": "development" },
+  "docker": { "maxConcurrent": 10, "maxAge": 1800000 },
+  "claude": { "sessionTimeout": 1800000, "maxSessions": 50 },
+  "upload": { "maxFileSize": 52428800, "allowedTypes": {...} },
+  "websocket": { "port": 8080, "heartbeatInterval": 30000 }
+}
+```
+
+---
+
+## 🏆 **Benefícios da Arquitetura V2.0**
+
+### **🔧 Para Desenvolvimento**
+- **Desenvolvimento Paralelo** - Equipes trabalham em módulos independentes
+- **Testes Isolados** - Cada módulo testável separadamente
+- **Debug Simplificado** - Problemas isolados por módulo
+- **Zero Breaking Changes** - Mudanças não quebram outros módulos
+
+### **🚀 Para Produção**
+- **Deploy Granular** - Atualizar apenas módulos alterados
+- **Escalabilidade Horizontal** - Cada módulo escala independentemente
+- **Monitoramento Detalhado** - Métricas por módulo
+- **Recuperação Rápida** - Falhas isoladas
+
+### **👥 Para Equipe**
+- **Curva de Aprendizado** - Foco em um módulo por vez
+- **Reutilização** - Módulos portáveis para outros projetos
+- **Padrões Consistentes** - Interfaces forçam boas práticas
+- **Documentação Viva** - Interfaces como documentação executável
+
+---
+
+## 🤝 **Contribuindo**
+
+1. Fork o projeto
+2. Crie sua feature branch (`git checkout -b feature/AmazingFeature`)
+3. Execute os testes (`npm run test:modules`)
+4. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+5. Push para a branch (`git push origin feature/AmazingFeature`)
+6. Abra um Pull Request
+
+---
+
+## 📄 **Licença**
+
+Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
+
+---
+
+## 🙏 **Agradecimentos**
+
+- [Anthropic](https://www.anthropic.com/) pelo Claude AI
+- [Docker](https://www.docker.com/) pela containerização
+- [TypeScript](https://www.typescriptlang.org/) pela type safety
+- [React](https://reactjs.org/) pela interface
+- [Node.js](https://nodejs.org/) pelo runtime
+
+---
+
+## 📞 **Suporte**
+
+- **Issues:** [GitHub Issues](https://github.com/surgicalbrasil/cryptalk/issues)
+- **Documentação:** [Guias Completos](6-docs/guides/)
+- **API Reference:** [Core Interfaces](2-backend/core/interfaces/)
+
+---
+
+<div align="center">
+
+**Feito com ❤️ usando Arquitetura Modular de Nível Enterprise**
+
+[⭐ Star no GitHub](https://github.com/surgicalbrasil/cryptalk) | [🐛 Report Bug](https://github.com/surgicalbrasil/cryptalk/issues) | [💡 Request Feature](https://github.com/surgicalbrasil/cryptalk/issues)
+
+</div>
