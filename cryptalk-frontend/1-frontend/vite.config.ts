@@ -5,14 +5,14 @@ import { resolve } from 'path'
 // 🎯 CrypTalk Frontend - Configuração Modular
 export default defineConfig({
   plugins: [react()],
-  root: '.',
-  publicDir: './assets/public',
+  root: './interface',
+  publicDir: '../assets/public',
   define: {
     'process.env': {},
     global: 'globalThis',
   },
   build: {
-    outDir: '../5-storage/builds',
+    outDir: '../dist',
     emptyOutDir: true,
     sourcemap: false,
     rollupOptions: {
