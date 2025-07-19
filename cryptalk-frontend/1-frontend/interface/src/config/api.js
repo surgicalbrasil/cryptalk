@@ -15,8 +15,16 @@ if (typeof window !== 'undefined' && window.CRYPTALK_CONFIG) {
   globalConfig = window.CRYPTALK_CONFIG;
 }
 
-// URLs padrão baseadas no ambiente - SISTEMA HÍBRIDO
+// URLs padrão baseadas no ambiente - SISTEMA HÍBRIDO MELHORADO
 const getDefaultUrls = () => {
+  // Debug logging
+  console.log('🔍 Debug Environment Variables:');
+  console.log('- PROD:', import.meta.env.PROD);
+  console.log('- VITE_API_URL:', import.meta.env.VITE_API_URL);
+  console.log('- VITE_TUNNEL_URL:', import.meta.env.VITE_TUNNEL_URL);
+  console.log('- VITE_APP_MODE:', import.meta.env.VITE_APP_MODE);
+  console.log('- hostname:', typeof window !== 'undefined' ? window.location.hostname : 'undefined');
+
   // Detectar se estamos rodando localmente ou no Vercel
   const isLocalhost = typeof window !== 'undefined' && 
     (window.location.hostname === 'localhost' || 
@@ -33,23 +41,19 @@ const getDefaultUrls = () => {
     };
   }
   
-  // Se não for localhost (Vercel), tentar ngrok tunnel
-  if (tunnelActive || isTunnelMode || isProduction) {
-    const tunnelUrl = import.meta.env.VITE_TUNNEL_URL || 'https://f79b50c021b3.ngrok-free.app';
-    console.log('🌐 Modo Híbrido: Usando ngrok tunnel para acesso remoto - v2');
-    return {
-      API_URL: tunnelUrl,
-      WEBSOCKET_URL: tunnelUrl.replace('https://', 'wss://'),
-      TUNNEL_URL: tunnelUrl,
-      MODE: 'ngrok-hybrid'
-    };
-  }
+  // MODO PRODUÇÃO: Se não for localhost (Vercel/produção), SEMPRE usar ngrok
+  console.log('🌐 Modo Híbrido: Detectado ambiente de produção, usando ngrok');
+  const ngrokUrl = import.meta.env.VITE_TUNNEL_URL || 
+                   import.meta.env.VITE_API_URL || 
+                   'https://f79b50c021b3.ngrok-free.app'; // Fallback hardcoded
   
-  // Fallback padrão
+  console.log('📡 ngrok URL sendo usada:', ngrokUrl);
+  
   return {
-    API_URL: import.meta.env.VITE_API_URL || 'http://localhost:3002',
-    WEBSOCKET_URL: import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:8080',
-    MODE: 'fallback'
+    API_URL: ngrokUrl,
+    WEBSOCKET_URL: ngrokUrl.replace('https://', 'wss://'),
+    TUNNEL_URL: ngrokUrl,
+    MODE: 'ngrok-production'
   };
 };
 
