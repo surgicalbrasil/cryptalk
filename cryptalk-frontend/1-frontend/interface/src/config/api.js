@@ -36,7 +36,7 @@ const getDefaultUrls = () => {
   // Se não for localhost (Vercel), tentar ngrok tunnel
   if (tunnelActive || isTunnelMode || isProduction) {
     const tunnelUrl = import.meta.env.VITE_TUNNEL_URL || 'https://f79b50c021b3.ngrok-free.app';
-    console.log('🌐 Modo Híbrido: Usando ngrok tunnel para acesso remoto');
+    console.log('🌐 Modo Híbrido: Usando ngrok tunnel para acesso remoto - v2');
     return {
       API_URL: tunnelUrl,
       WEBSOCKET_URL: tunnelUrl.replace('https://', 'wss://'),
