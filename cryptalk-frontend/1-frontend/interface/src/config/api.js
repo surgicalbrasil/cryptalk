@@ -42,7 +42,7 @@ const getDefaultUrls = () => {
   }
   
   // MODO PRODUÇÃO: Se não for localhost (Vercel/produção), SEMPRE usar ngrok
-  console.log('🌐 Modo Híbrido: Detectado ambiente de produção, usando ngrok');
+  console.log('🌐 Modo Híbrido: Detectado ambiente de produção, usando ngrok - FORCE REBUILD v3');
   const ngrokUrl = import.meta.env.VITE_TUNNEL_URL || 
                    import.meta.env.VITE_API_URL || 
                    'https://f79b50c021b3.ngrok-free.app'; // Fallback hardcoded
