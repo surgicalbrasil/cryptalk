@@ -33,15 +33,15 @@ const getDefaultUrls = () => {
     };
   }
   
-  // Se não for localhost (Vercel), tentar tunnel
+  // Se não for localhost (Vercel), tentar ngrok tunnel
   if (tunnelActive || isTunnelMode || isProduction) {
-    const tunnelUrl = import.meta.env.VITE_TUNNEL_URL || 'https://upgrade-leon-participants-paragraphs.trycloudflare.com';
-    console.log('🌐 Modo Híbrido: Usando tunnel para acesso remoto');
+    const tunnelUrl = import.meta.env.VITE_TUNNEL_URL || 'https://f79b50c021b3.ngrok-free.app';
+    console.log('🌐 Modo Híbrido: Usando ngrok tunnel para acesso remoto');
     return {
       API_URL: tunnelUrl,
       WEBSOCKET_URL: tunnelUrl.replace('https://', 'wss://'),
       TUNNEL_URL: tunnelUrl,
-      MODE: 'tunnel-hybrid'
+      MODE: 'ngrok-hybrid'
     };
   }
   
@@ -191,15 +191,15 @@ export const autoDetectUrls = async () => {
     return API_CONFIG;
   }
   
-  // MODO REMOTO: Se não for localhost (Vercel), usar tunnel
-  console.log('🌐 Detecção Híbrida: Modo remoto, usando tunnel');
+  // MODO REMOTO: Se não for localhost (Vercel), usar ngrok tunnel
+  console.log('🌐 Detecção Híbrida: Modo remoto, usando ngrok tunnel');
   if (tunnelActive || isTunnelMode || isProduction) {
-    const tunnelUrl = import.meta.env.VITE_TUNNEL_URL || 'https://upgrade-leon-participants-paragraphs.trycloudflare.com';
+    const tunnelUrl = import.meta.env.VITE_TUNNEL_URL || 'https://f79b50c021b3.ngrok-free.app';
     const tunnelConfig = {
       API_URL: tunnelUrl,
       WEBSOCKET_URL: tunnelUrl.replace('https://', 'wss://'),
       TUNNEL_URL: tunnelUrl,
-      MODE: 'tunnel-hybrid'
+      MODE: 'ngrok-hybrid'
     };
     
     updateConfig(tunnelConfig);
