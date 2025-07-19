@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "cd 1-frontend && npm run dev",
     "build": "cd 1-frontend && npm run build",
+    "vercel-build": "cd 1-frontend && npm install && npm run build",
     "backend": "cd 2-backend && npx ts-node orchestrator.ts",
     "backend:old": "cd 2-backend/api-server/claude-service && node orchestrator.js",
     "start": "concurrently \"npm run backend\" \"npm run dev\"",
