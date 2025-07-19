@@ -5,14 +5,15 @@ import { resolve } from 'path'
 // 🎯 CrypTalk Frontend - Configuração Modular
 export default defineConfig({
   plugins: [react()],
-  root: './interface',
-  publicDir: '../assets',
+  root: '.',
+  publicDir: './assets/public',
   define: {
     'process.env': {},
     global: 'globalThis',
   },
   build: {
     outDir: '../5-storage/builds',
+    emptyOutDir: true,
     sourcemap: false,
     rollupOptions: {
       onwarn(warning, warn) {
@@ -48,11 +49,11 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, './interface'),
-      '@components': resolve(__dirname, './interface/components'),
-      '@services': resolve(__dirname, './interface/services'),
-      '@config': resolve(__dirname, './interface/config'),
-      '@utils': resolve(__dirname, './interface/utils')
+      '@': resolve(__dirname, './interface/src'),
+      '@components': resolve(__dirname, './interface/src/components'),
+      '@services': resolve(__dirname, './interface/src/services'),
+      '@config': resolve(__dirname, './interface/src/config'),
+      '@utils': resolve(__dirname, './interface/src/utils')
     }
   }
 })
