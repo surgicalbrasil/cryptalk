@@ -12,7 +12,7 @@ export default defineConfig({
     global: 'globalThis',
   },
   build: {
-    outDir: '../dist',
+    outDir: '../../dist',
     emptyOutDir: true,
     sourcemap: false,
     rollupOptions: {
