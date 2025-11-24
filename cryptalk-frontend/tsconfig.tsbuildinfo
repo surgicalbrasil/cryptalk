@@ -1,1 +1,0 @@
-{"root":["./src/index.ts","./src/system.ts","./src/app/App.tsx","./src/app/main.tsx","./src/app/theme.ts","./src/app/vite-env.d.ts","./src/modules/chat.ts","./src/modules/payments.ts","./src/modules/storage.ts"],"version":"5.6.3"}

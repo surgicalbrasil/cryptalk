@@ -1,0 +1,195 @@
+# Dockerfile para ambiente de usuário isolado
+FROM node:18-alpine AS base
+
+# Instalar dependências do sistema
+RUN apk add --no-cache \
+    python3 \
+    python3-dev \
+    py3-pip \
+    gcc \
+    g++ \
+    make \
+    bash \
+    curl \
+    git \
+    vim \
+    nano \
+    jq \
+    && rm -rf /var/cache/apk/*
+
+# Instalar Node.js tools globais
+RUN npm install -g \
+    typescript \
+    ts-node \
+    nodemon \
+    pm2 \
+    @anthropic-ai/sdk
+
+# Instalar Python packages
+RUN pip3 install --no-cache-dir \
+    requests \
+    anthropic \
+    numpy \
+    pandas \
+    matplotlib \
+    jupyter \
+    ipython
+
+# Criar usuário não-root
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nodejs -u 1001
+
+# Criar diretórios de trabalho
+RUN mkdir -p /app/data /app/uploads /app/logs /app/workspace && \
+    chown -R nodejs:nodejs /app
+
+# Copiar analisador Claude
+COPY --chown=nodejs:nodejs claude-analyzer.js /app/
+COPY --chown=nodejs:nodejs package.json /app/
+COPY --chown=nodejs:nodejs health-check.js /app/
+
+# Instalar dependências Node.js
+WORKDIR /app
+RUN npm install --production && \
+    npm cache clean --force
+
+# Configurar ambiente Python
+ENV PYTHONPATH=/app/workspace
+ENV PYTHONUNBUFFERED=1
+
+# Configurar Node.js
+ENV NODE_ENV=production
+ENV PATH="/app/node_modules/.bin:$PATH"
+
+# Criar script de inicialização
+RUN cat > /app/init.sh << 'EOF'
+#!/bin/bash
+set -e
+
+# Configurar workspace
+mkdir -p /app/workspace/{src,tests,docs,tmp}
+cd /app/workspace
+
+# Inicializar projeto Node.js se não existir
+if [ ! -f package.json ]; then
+    cat > package.json << 'PACKAGE_EOF'
+{
+  "name": "claude-workspace",
+  "version": "1.0.0",
+  "description": "Claude isolated workspace",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "jest"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "jest": "^29.5.0",
+    "nodemon": "^3.0.1"
+  }
+}
+PACKAGE_EOF
+fi
+
+# Criar arquivo de exemplo se não existir
+if [ ! -f index.js ]; then
+    cat > index.js << 'JS_EOF'
+// Claude Workspace - Ambiente isolado
+console.log('✅ Ambiente Claude inicializado com sucesso!');
+console.log('📁 Diretório atual:', process.cwd());
+console.log('🔧 Node.js versão:', process.version);
+console.log('🐍 Python disponível:', process.env.PYTHON_VERSION || 'Verificar com python3 --version');
+
+// Exemplo de uso da API Claude
+const { Anthropic } = require('@anthropic-ai/sdk');
+
+async function example() {
+    try {
+        console.log('🤖 Testando conexão com Claude...');
+        // Código de exemplo aqui
+    } catch (error) {
+        console.error('❌ Erro:', error.message);
+    }
+}
+
+module.exports = { example };
+JS_EOF
+fi
+
+# Criar README
+if [ ! -f README.md ]; then
+    cat > README.md << 'README_EOF'
+# Claude Workspace
+
+Ambiente isolado para execução de código com Claude.
+
+## Ferramentas Disponíveis
+
+### Node.js
+- Node.js 18 com TypeScript
+- Packages: @anthropic-ai/sdk, jest, nodemon
+- PM2 para process management
+
+### Python
+- Python 3 com pip
+- Packages: anthropic, numpy, pandas, matplotlib, jupyter
+
+### Utilitários
+- Git, curl, vim, nano, jq
+- Bash shell completo
+
+## Estrutura
+```
+/app/workspace/
+├── src/           # Código fonte
+├── tests/         # Testes
+├── docs/          # Documentação
+├── tmp/           # Arquivos temporários
+├── package.json   # Dependências Node.js
+└── README.md      # Este arquivo
+```
+
+## Uso
+```bash
+# Executar Node.js
+node index.js
+
+# Executar Python
+python3 -c "print('Hello from Python!')"
+
+# Instalar dependências
+npm install <package>
+pip3 install <package>
+```
+README_EOF
+fi
+
+echo "🚀 Workspace inicializado em /app/workspace"
+ls -la /app/workspace/
+
+# Manter container rodando
+tail -f /dev/null
+EOF
+
+# Tornar script executável
+RUN chmod +x /app/init.sh
+
+# Configurar permissões
+RUN chown -R nodejs:nodejs /app
+
+# Usuário não-root
+USER nodejs
+
+# Diretório de trabalho
+WORKDIR /app/workspace
+
+# Expor portas para desenvolvimento
+EXPOSE 3000 8000 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000/health || node /app/health-check.js
+
+# Comando padrão
+CMD ["/app/init.sh"]

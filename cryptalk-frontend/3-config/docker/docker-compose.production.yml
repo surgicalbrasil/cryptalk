@@ -1,0 +1,716 @@
+version: '3.8'
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+    labels: "com.cryptalk.service"
+
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 40s
+
+services:
+  # ===========================================
+  # FRONTEND & API SERVICES
+  # ===========================================
+  
+  # Frontend Application
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production
+    image: cryptalk-frontend:latest
+    container_name: cryptalk-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=${API_URL:-http://api:3001}
+      - VITE_WS_URL=${WS_URL:-ws://api:3001}
+      - VITE_CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - VITE_ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - ./dist:/app/dist:ro
+      - frontend-static:/app/public
+    networks:
+      - frontend-network
+    depends_on:
+      - api
+      - redis
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.2'
+          memory: 128M
+    logging: *default-logging
+
+  # Backend API Server
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    image: cryptalk-api:latest
+    container_name: cryptalk-api
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=postgresql://${DB_USER:-cryptalk_user}:${DB_PASSWORD:-secure_password_123}@postgres:5432/${DB_NAME:-cryptalk}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-defaultpassword}@redis:6379
+      - JWT_SECRET=${JWT_SECRET}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+      - api-config:/app/config
+    networks:
+      - frontend-network
+      - backend-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    logging: *default-logging
+
+  # Claude Service Orchestrator
+  claude-orchestrator:
+    build: 
+      context: ./claude-service
+      dockerfile: Dockerfile
+    image: claude-orchestrator:latest
+    container_name: claude-orchestrator
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - MAX_CONTAINERS=20
+      - CONTAINER_TIMEOUT=30m
+      - DATABASE_URL=postgresql://${DB_USER:-cryptalk_user}:${DB_PASSWORD:-secure_password_123}@postgres:5432/${DB_NAME:-cryptalk}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-defaultpassword}@redis:6379
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./uploads:/app/uploads
+      - ./logs/claude:/app/logs
+      - claude-config:/app/config
+    networks:
+      - backend-network
+      - orchestration-network
+    depends_on:
+      - redis
+      - postgres
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "node", "health-check.js"]
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+    logging: *default-logging
+
+  # ===========================================
+  # CLOUDFLARE TUNNEL
+  # ===========================================
+  
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cryptalk-cloudflared
+    restart: unless-stopped
+    command: tunnel --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./tunnel-config.yml:/etc/cloudflared/config.yml:ro
+      - cloudflared-config:/home/nonroot/.cloudflared
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    networks:
+      - frontend-network
+      - tunnel-network
+    depends_on:
+      - nginx
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "cloudflared", "tunnel", "info"]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    logging: *default-logging
+
+  # ===========================================
+  # LOAD BALANCING & PROXY
+  # ===========================================
+  
+  # Nginx as main reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: cryptalk-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/ssl/certs:ro
+      - nginx-logs:/var/log/nginx
+      - nginx-cache:/var/cache/nginx
+      - frontend-static:/usr/share/nginx/html:ro
+    networks:
+      - frontend-network
+      - backend-network
+    depends_on:
+      - frontend
+      - api
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "nginx", "-t"]
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.2'
+          memory: 128M
+    logging: *default-logging
+
+  # HAProxy for advanced load balancing
+  haproxy:
+    image: haproxy:alpine
+    container_name: cryptalk-haproxy
+    restart: unless-stopped
+    ports:
+      - "8404:8404"  # Stats interface
+    volumes:
+      - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - haproxy-logs:/var/log/haproxy
+    networks:
+      - backend-network
+    depends_on:
+      - api
+      - claude-orchestrator
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "curl", "-f", "http://localhost:8404/stats"]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    logging: *default-logging
+
+  # ===========================================
+  # DATA STORAGE
+  # ===========================================
+  
+  # PostgreSQL for persistent data
+  postgres:
+    image: postgres:15-alpine
+    container_name: cryptalk-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=${DB_NAME:-cryptalk}
+      - POSTGRES_USER=${DB_USER:-cryptalk_user}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-secure_password_123}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=en_US.utf8 --lc-ctype=en_US.utf8
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - postgres-backup:/backups
+    networks:
+      - backend-network
+      - database-network
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-cryptalk_user} -d ${DB_NAME:-cryptalk}"]
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    logging: *default-logging
+
+  # Redis for caching and sessions
+  redis:
+    image: redis:7-alpine
+    container_name: cryptalk-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./redis/redis.conf:/etc/redis/redis.conf:ro
+    networks:
+      - backend-network
+      - cache-network
+    command: >
+      redis-server 
+      --appendonly yes 
+      --maxmemory 512mb 
+      --maxmemory-policy allkeys-lru 
+      --requirepass ${REDIS_PASSWORD:-defaultpassword}
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD:-defaultpassword}", "ping"]
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.2'
+          memory: 256M
+    logging: *default-logging
+
+  # ===========================================
+  # MONITORING & LOGGING
+  # ===========================================
+  
+  # Prometheus for metrics
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: cryptalk-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    networks:
+      - backend-network
+      - monitoring-network
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.2'
+          memory: 256M
+    logging: *default-logging
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: cryptalk-grafana
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin123}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource,grafana-piechart-panel
+      - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:-http://localhost:3002}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - backend-network
+      - monitoring-network
+    depends_on:
+      - prometheus
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    logging: *default-logging
+
+  # Elasticsearch for logs
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: cryptalk-elasticsearch
+    restart: unless-stopped
+    ports:
+      - "9200:9200"
+    environment:
+      - node.name=cryptalk-es
+      - cluster.name=cryptalk-cluster
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - xpack.security.enabled=true
+      - xpack.security.enrollment.enabled=true
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-elastic123}
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+      - elasticsearch-logs:/usr/share/elasticsearch/logs
+    networks:
+      - backend-network
+      - logging-network
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -s -X GET 'localhost:9200/_cluster/health?pretty' -u elastic:${ELASTIC_PASSWORD:-elastic123} | grep -q '\"status\" : \"\\(green\\|yellow\\)\"'"]
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    logging: *default-logging
+
+  # Logstash for log processing
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: cryptalk-logstash
+    restart: unless-stopped
+    ports:
+      - "5044:5044"
+      - "5000:5000/tcp"
+      - "5000:5000/udp"
+    volumes:
+      - ./logstash/config:/usr/share/logstash/config:ro
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - logstash-data:/usr/share/logstash/data
+    networks:
+      - backend-network
+      - logging-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - LS_JAVA_OPTS=-Xmx512m -Xms512m
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD:-elastic123}
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -f http://localhost:9600/_node/stats || exit 1"]
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.2'
+          memory: 512M
+    logging: *default-logging
+
+  # Kibana for log visualization
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: cryptalk-kibana
+    restart: unless-stopped
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD:-elastic123}
+      - SERVER_NAME=kibana
+      - SERVER_HOST=0.0.0.0
+    volumes:
+      - kibana-data:/usr/share/kibana/data
+    networks:
+      - backend-network
+      - logging-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 256M
+    logging: *default-logging
+
+  # ===========================================
+  # BACKUP & MAINTENANCE
+  # ===========================================
+  
+  # Automated backup service
+  backup:
+    image: postgres:15-alpine
+    container_name: cryptalk-backup
+    restart: unless-stopped
+    volumes:
+      - postgres-backup:/backups
+      - redis-data:/redis-data:ro
+      - ./scripts/backup.sh:/backup.sh:ro
+    networks:
+      - backend-network
+      - database-network
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - BACKUP_SCHEDULE=0 2 * * *
+      - DB_HOST=postgres
+      - DB_NAME=${DB_NAME:-cryptalk}
+      - DB_USER=${DB_USER:-cryptalk_user}
+      - DB_PASSWORD=${DB_PASSWORD:-secure_password_123}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-defaultpassword}
+      - S3_BUCKET=${S3_BUCKET}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    entrypoint: >
+      sh -c "
+        apk add --no-cache redis aws-cli &&
+        echo '${BACKUP_SCHEDULE} /backup.sh' | crontab - &&
+        crond -f -l 2
+      "
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    logging: *default-logging
+
+  # Container auto-update service
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: cryptalk-watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_INCLUDE_STOPPED=false
+      - WATCHTOWER_INCLUDE_RESTARTING=true
+      - WATCHTOWER_SCHEDULE=0 0 4 * * *
+      - WATCHTOWER_TIMEOUT=300s
+      - WATCHTOWER_NOTIFICATIONS=email
+      - WATCHTOWER_NOTIFICATION_EMAIL_FROM=${SMTP_FROM}
+      - WATCHTOWER_NOTIFICATION_EMAIL_TO=${ADMIN_EMAIL}
+      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER=${SMTP_SERVER}
+      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PORT=${SMTP_PORT:-587}
+      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_USER=${SMTP_USER}
+      - WATCHTOWER_NOTIFICATION_EMAIL_SERVER_PASSWORD=${SMTP_PASSWORD}
+    networks:
+      - backend-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    logging: *default-logging
+
+# ===========================================
+# NETWORKS
+# ===========================================
+
+networks:
+  frontend-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/24
+    driver_opts:
+      com.docker.network.bridge.name: br-frontend
+
+  backend-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.0.0/24
+    driver_opts:
+      com.docker.network.bridge.name: br-backend
+
+  database-network:
+    driver: bridge
+    internal: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.22.0.0/24
+    driver_opts:
+      com.docker.network.bridge.name: br-database
+
+  cache-network:
+    driver: bridge
+    internal: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.23.0.0/24
+    driver_opts:
+      com.docker.network.bridge.name: br-cache
+
+  monitoring-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.24.0.0/24
+    driver_opts:
+      com.docker.network.bridge.name: br-monitoring
+
+  logging-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.0.0/24
+    driver_opts:
+      com.docker.network.bridge.name: br-logging
+
+  orchestration-network:
+    driver: bridge
+    internal: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.26.0.0/24
+    driver_opts:
+      com.docker.network.bridge.name: br-orchestration
+
+  tunnel-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.27.0.0/24
+    driver_opts:
+      com.docker.network.bridge.name: br-tunnel
+
+# ===========================================
+# VOLUMES
+# ===========================================
+
+volumes:
+  # Application data
+  frontend-static:
+    driver: local
+  api-config:
+    driver: local
+  claude-config:
+    driver: local
+  cloudflared-config:
+    driver: local
+  
+  # Database volumes
+  postgres-data:
+    driver: local
+  postgres-backup:
+    driver: local
+  redis-data:
+    driver: local
+  
+  # Logging volumes
+  nginx-logs:
+    driver: local
+  nginx-cache:
+    driver: local
+  haproxy-logs:
+    driver: local
+  elasticsearch-data:
+    driver: local
+  elasticsearch-logs:
+    driver: local
+  logstash-data:
+    driver: local
+  kibana-data:
+    driver: local
+  
+  # Monitoring volumes
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local

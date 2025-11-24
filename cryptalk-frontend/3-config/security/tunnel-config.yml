@@ -1,0 +1,137 @@
+# Configuração do Cloudflare Tunnel para CrysTalk - Produção
+# ============================================================
+
+# Configuração do túnel
+tunnel: cryptalk-production
+credentials-file: /home/nonroot/.cloudflared/credentials.json
+
+# Configuração de log
+loglevel: info
+logfile: /var/log/cloudflared.log
+
+# Configuração de ingress para produção
+ingress:
+  # Frontend principal
+  - hostname: "cryptalk.com"
+    service: http://nginx:80
+    originRequest:
+      httpHostHeader: cryptalk.com
+      connectTimeout: 30s
+      tlsTimeout: 30s
+      keepAliveTimeout: 30s
+      keepAliveConnections: 10
+  
+  # API backend
+  - hostname: "api.cryptalk.com"
+    service: http://nginx:80
+    originRequest:
+      httpHostHeader: api.cryptalk.com
+      connectTimeout: 30s
+      tlsTimeout: 30s
+      keepAliveTimeout: 30s
+      keepAliveConnections: 10
+  
+  # WebSocket connections
+  - hostname: "ws.cryptalk.com"
+    service: ws://nginx:80
+    originRequest:
+      httpHostHeader: ws.cryptalk.com
+      connectTimeout: 30s
+      tlsTimeout: 30s
+      keepAliveTimeout: 30s
+      keepAliveConnections: 10
+  
+  # Monitoring (Grafana)
+  - hostname: "grafana.cryptalk.com"
+    service: http://grafana:3000
+    originRequest:
+      httpHostHeader: grafana.cryptalk.com
+      connectTimeout: 30s
+      tlsTimeout: 30s
+      keepAliveTimeout: 30s
+      keepAliveConnections: 10
+  
+  # Logs (Kibana)
+  - hostname: "logs.cryptalk.com"
+    service: http://kibana:5601
+    originRequest:
+      httpHostHeader: logs.cryptalk.com
+      connectTimeout: 30s
+      tlsTimeout: 30s
+      keepAliveTimeout: 30s
+      keepAliveConnections: 10
+  
+  # HAProxy stats
+  - hostname: "stats.cryptalk.com"
+    service: http://haproxy:8404
+    originRequest:
+      httpHostHeader: stats.cryptalk.com
+      connectTimeout: 30s
+      tlsTimeout: 30s
+      keepAliveTimeout: 30s
+      keepAliveConnections: 10
+  
+  # Prometheus metrics
+  - hostname: "metrics.cryptalk.com"
+    service: http://prometheus:9090
+    originRequest:
+      httpHostHeader: metrics.cryptalk.com
+      connectTimeout: 30s
+      tlsTimeout: 30s
+      keepAliveTimeout: 30s
+      keepAliveConnections: 10
+  
+  # Catch-all para subdomínios
+  - hostname: "*.cryptalk.com"
+    service: http://nginx:80
+    originRequest:
+      httpHostHeader: cryptalk.com
+      connectTimeout: 30s
+      tlsTimeout: 30s
+      keepAliveTimeout: 30s
+      keepAliveConnections: 10
+  
+  # Fallback padrão
+  - service: http://nginx:80
+    originRequest:
+      httpHostHeader: cryptalk.com
+      connectTimeout: 30s
+      tlsTimeout: 30s
+      keepAliveTimeout: 30s
+      keepAliveConnections: 10
+
+# Configurações de transporte
+transport-loglevel: info
+retries: 3
+grace-period: 30s
+
+# Configurações de protocolo
+protocol: http2
+
+# Configurações de origem
+origin-ca-pool: /etc/ssl/certs/ca-certificates.crt
+no-chunked-encoding: false
+origin-server-name: cryptalk.com
+
+# Configurações de proxy
+proxy-connect-timeout: 30s
+proxy-tls-timeout: 30s
+proxy-tcp-keepalive: 30s
+proxy-no-happy-eyeballs: false
+
+# Configurações de edge
+edge-ip-version: auto
+edge-bind-address: 0.0.0.0
+
+# Configurações de métricas
+metrics: 0.0.0.0:9091
+
+# Configurações de compressão
+compression: gzip
+
+# Configurações de cache
+browser-check: true
+
+# Configurações de segurança
+warp-routing:
+  enabled: false

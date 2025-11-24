@@ -1,0 +1,101 @@
+# Dependências
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Arquivos de configuração local
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Arquivos de build
+dist
+build
+.vite
+
+# Arquivos de cache
+.next
+.nuxt
+.cache
+.parcel-cache
+.eslintcache
+
+# Arquivos de IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+*.log
+
+# Arquivos de documentação
+*.md
+docs/
+README.md
+CHANGELOG.md
+
+# Arquivos de teste
+test
+tests
+__tests__
+*.test.js
+*.spec.js
+coverage
+
+# Arquivos de Git
+.git
+.gitignore
+.gitattributes
+
+# Arquivos temporários
+tmp
+temp
+*.tmp
+*.temp
+
+# Arquivos de backup
+*.backup
+*.bak
+*.old
+
+# Arquivos de upload e logs
+uploads/
+logs/
+*.log
+
+# Arquivos do Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Arquivos de análise
+analysis-structures/
+monitoring/prometheus.yml
+monitoring/grafana/
+
+# Arquivos de configuração específicos
+tunnel-config.yml
+tunnel.log
+cloudflared*
+*.deb
+
+# Arquivos de script
+scripts/
+manage-tunnel.sh
+test-*.cjs
+test-*.js
+
+# Arquivos de backup
+backups/
+*.backup
+
+# Arquivos de licença
+LICENSE

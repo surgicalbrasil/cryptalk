@@ -1,0 +1,104 @@
+# Dockerfile para ambiente de usuário isolado com Claude Code
+FROM node:18-alpine
+
+# Instalar dependências do sistema
+RUN apk add --no-cache \
+    dumb-init \
+    curl \
+    bash \
+    git \
+    python3 \
+    py3-pip \
+    ca-certificates \
+    && rm -rf /var/cache/apk/*
+
+# Instalar Claude Code CLI
+RUN npm install -g @anthropic-ai/claude-cli
+
+# Criar usuário não-root
+RUN addgroup -g 1001 -S claude && \
+    adduser -S claude -u 1001 -G claude
+
+# Criar diretórios de trabalho
+RUN mkdir -p /app/data /app/uploads /app/logs /app/temp /app/templates && \
+    chown -R claude:claude /app
+
+# Diretório de trabalho
+WORKDIR /app
+
+# Copiar scripts do analyzer
+COPY claude-service/claude-analyzer.js /app/
+COPY claude-service/package.json /app/
+COPY claude-service/health-check.js /app/
+COPY server/templates/ /app/templates/
+
+# Instalar dependências
+RUN npm install --only=production && npm cache clean --force
+
+# Criar script de inicialização
+RUN cat > /app/start.sh << 'EOF'
+#!/bin/bash
+set -e
+
+echo "🚀 Iniciando container Claude Code para cliente: $CLIENT_ID"
+echo "📦 Container: $CONTAINER_NAME"
+
+# Verificar se Claude Code está disponível
+if command -v claude &> /dev/null; then
+    echo "✅ Claude Code disponível"
+    claude --version || echo "⚠️  Versão não disponível"
+else
+    echo "❌ Claude Code não encontrado"
+    exit 1
+fi
+
+# Verificar API key
+if [ -z "$ANTHROPIC_API_KEY" ] && [ -z "$CLAUDE_API_KEY" ]; then
+    echo "⚠️  Aviso: Nenhuma API key configurada"
+fi
+
+# Manter container vivo
+echo "🔍 Container pronto para análises"
+exec dumb-init tail -f /dev/null
+EOF
+
+RUN chmod +x /app/start.sh
+
+# Criar health check script
+RUN cat > /app/health.sh << 'EOF'
+#!/bin/bash
+# Verificar se Claude Code está funcionando
+if command -v claude &> /dev/null; then
+    echo "✅ Claude Code disponível"
+    exit 0
+else
+    echo "❌ Claude Code não encontrado"
+    exit 1
+fi
+EOF
+
+RUN chmod +x /app/health.sh
+
+# Configurar permissões
+RUN chown -R claude:claude /app
+
+# Configurar variáveis de ambiente para Claude Code
+ENV NODE_ENV=production
+ENV CLIENT_ID=""
+ENV CONTAINER_NAME=""
+ENV CLAUDE_COMMAND="claude"
+ENV ANTHROPIC_API_KEY=""
+ENV CLAUDE_API_KEY=""
+
+# Usuário não-root
+USER claude
+
+# Expor porta para health check
+EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD /app/health.sh
+
+# Comando padrão (inicializar container)
+CMD ["/app/start.sh"]

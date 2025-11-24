@@ -1,0 +1,53 @@
+version: '3.8'
+
+# 🎯 CrypTalk - Estrutura Modular Didática
+# ==========================================
+
+services:
+  # 🎨 Frontend (Interface do Usuário)
+  frontend:
+    build: 
+      context: ./1-frontend
+      dockerfile: ../3-config/docker/Dockerfile.user-env
+    image: cryptalk-frontend:latest
+    container_name: cryptalk-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./1-frontend/interface:/app/src
+      - ./1-frontend/assets:/app/public
+      - ./5-storage/builds:/app/dist
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:3002
+
+  # ⚙️ Backend (API Server)
+  backend:
+    build: 
+      context: ./2-backend/api-server
+      dockerfile: ../../3-config/docker/Dockerfile
+    image: cryptalk-backend:latest
+    container_name: cryptalk-backend
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+      - "8080:8080"
+    volumes:
+      - ./2-backend:/app
+      - ./5-storage/uploads:/app/uploads
+      - ./5-storage/logs:/app/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+
+networks:
+  cryptalk-network:
+    driver: bridge
+
+volumes:
+  uploads-data:
+  logs-data:

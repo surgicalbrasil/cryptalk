@@ -1,0 +1,64 @@
+{
+  "name": "cryptalk-backend-modular",
+  "version": "2.0.0",
+  "description": "CrypTalk Backend - Arquitetura Modular com TypeScript",
+  "main": "orchestrator.ts",
+  "type": "module",
+  "scripts": {
+    "start": "npx ts-node --esm orchestrator.ts",
+    "dev": "npx nodemon --exec ts-node orchestrator.ts",
+    "build": "npx tsc",
+    "test": "jest",
+    "test:modules": "npm run test:docker && npm run test:claude && npm run test:upload && npm run test:websocket",
+    "test:docker": "cd modules/docker && npm test",
+    "test:claude": "cd modules/claude && npm test",
+    "test:upload": "cd modules/upload && npm test",
+    "test:websocket": "cd modules/websocket && npm test",
+    "validate": "npx tsc --noEmit",
+    "lint": "eslint . --ext .ts",
+    "clean": "rm -rf dist node_modules modules/*/node_modules",
+    "install-modules": "cd modules/docker && npm install && cd ../claude && npm install && cd ../upload && npm install && cd ../websocket && npm install"
+  },
+  "dependencies": {
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "uuid": "^9.0.1",
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.14",
+    "@types/express": "^4.17.20",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "@types/uuid": "^9.0.7",
+    "@types/ws": "^8.5.9",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.55.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.10",
+    "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "cryptalk",
+    "modular",
+    "typescript",
+    "backend",
+    "docker",
+    "claude-ai",
+    "websocket",
+    "dependency-injection"
+  ],
+  "author": "CrypTalk Team",
+  "license": "MIT"
+}
